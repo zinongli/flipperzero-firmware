@@ -41,6 +41,8 @@ static bool trt_parse(const NfcDevice* device, FuriString* parsed_data) {
         uint32_t latest_sale_record = bit_lib_get_bits_32(partial_record_pointer, 3, 20);
         uint32_t latest_sale_full_record = bit_lib_get_bits_32(full_record_pointer, 0, 27);
         if(latest_sale_record != (latest_sale_full_record & 0xFFFFF)) break;
+        if((latest_sale_record == 0) | (latest_sale_full_record == 0))
+            break; // prevent false positive
 
         // Parse date
         // yyy yyyymmmm dddddhhh hhnnnnnn
