@@ -33,8 +33,8 @@ typedef struct {
 } ProtocolNoralsy;
 
 ProtocolNoralsy* protocol_noralsy_alloc(void) {
-    ProtocolNoralsy* proto = malloc(sizeof(ProtocolNoralsy));
-    return (void*)proto;
+    ProtocolNoralsy* protocol = malloc(sizeof(ProtocolNoralsy));
+    return (void*)protocol;
 }
 
 void protocol_noralsy_free(ProtocolNoralsy* protocol) {
@@ -46,14 +46,12 @@ uint8_t* protocol_noralsy_get_data(ProtocolNoralsy* protocol) {
 }
 
 static void protocol_noralsy_decode(ProtocolNoralsy* protocol) {
-    UNUSED(protocol);
+    bit_lib_copy_bits(protocol->data, 0, NORALSY_ENCODED_BIT_SIZE, protocol->encoded_data, 0);
 }
 
 static bool protocol_noralsy_can_be_decoded(ProtocolNoralsy* protocol) {
     // check 32 bits preamble
-    if(bit_lib_get_bits_32(protocol->encoded_data, 0, 32) != 0b10111011000000110001010011111111 &&
-       bit_lib_get_bits_32(protocol->encoded_data, 0, 32) != 0b10111011000000100001010011111111)
-        return false;
+    if(bit_lib_get_bits_16(protocol->encoded_data, 0, 12) != 0b101110110000) return false;
 
     return true;
 }
@@ -105,10 +103,8 @@ bool protocol_noralsy_decoder_feed(ProtocolNoralsy* protocol, bool level, uint32
 }
 
 bool protocol_noralsy_encoder_start(ProtocolNoralsy* protocol) {
-    for(int i = 0; i < NORALSY_ENCODED_BYTE_SIZE; i++) {
-        // data byte
-        bit_lib_set_bits(protocol->encoded_data[i], 0, protocol->data[i], 0);
-    }
+    bit_lib_copy_bits(protocol->encoded_data, 0, NORALSY_ENCODED_BIT_SIZE, protocol->data, 0);
+
     return true;
 }
 
@@ -155,14 +151,11 @@ static void protocol_noralsy_render_data_internal(
     ProtocolNoralsy* protocol,
     FuriString* result,
     bool brief) {
+    UNUSED(protocol);
     if(brief) {
-        furi_string_printf(
-            result,
-            "This is just beta version.");
+        furi_string_printf(result, "This is just beta version.");
     } else {
-        furi_string_printf(
-            result,
-            "This is just beta version.");
+        furi_string_printf(result, "This is just beta version.");
     }
 }
 
