@@ -137,7 +137,11 @@ bool protocol_noralsy_write_data(ProtocolNoralsy* protocol, void* data) {
     if(request->write_type == LFRFIDWriteTypeT5577) {
         request->t5577.block[0] =
             (LFRFID_T5577_MODULATION_MANCHESTER | LFRFID_T5577_BITRATE_RF_32 |
-             (3 << LFRFID_T5577_MAXBLOCK_SHIFT));
+             (3 << LFRFID_T5577_MAXBLOCK_SHIFT) | LFRFID_T5577_ST_TERMINATOR);
+        // In fact, base on the current two dump samples we have,
+        // Noralsy are usually T5577s with config = 0x00088C6A
+        // But the C and A are not explainable by the ATA5577C datasheet
+        // So we are mimicing Proxmark's solution here. Leave those nibbles as zero.
         request->t5577.block[1] = bit_lib_get_bits_32(protocol->encoded_data, 0, 32);
         request->t5577.block[2] = bit_lib_get_bits_32(protocol->encoded_data, 32, 32);
         request->t5577.block[3] = bit_lib_get_bits_32(protocol->encoded_data, 64, 32);
