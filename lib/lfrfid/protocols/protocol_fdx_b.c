@@ -5,6 +5,7 @@
 #include <bit_lib/bit_lib.h>
 #include "lfrfid_protocols.h"
 #include <furi_hal_rtc.h>
+#include <tools/iso_3166.h>
 
 #define FDX_B_ENCODED_BIT_SIZE       (128)
 #define FDX_B_ENCODED_BYTE_SIZE      (((FDX_B_ENCODED_BIT_SIZE) / 8))
@@ -287,15 +288,18 @@ void protocol_fdx_b_render_data(ProtocolFDXB* protocol, FuriString* result) {
     uint8_t user_info = bit_lib_get_bits(protocol->data, 55, 5);
     uint8_t replacement_number = bit_lib_get_bits(protocol->data, 60, 3);
     bool animal_flag = bit_lib_get_bit(protocol->data, 63);
+    ISO3166Country country = iso_3166_find_country_by_code(country_code);
 
     furi_string_printf(
         result,
         "ID: %03hu-%012llu\n"
         "Country Code: %hu\n"
+        "Country: %s\n"
         "Temperature: ",
         country_code,
         national_code,
-        country_code);
+        country_code,
+        (country.code == 0) ? "Unknown" : country.full_name);
 
     float temperature;
     if(protocol_fdx_b_get_temp(protocol->data, &temperature)) {
@@ -328,14 +332,16 @@ void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result
 
     // 10 bit of country code
     uint16_t country_code = protocol_fdx_b_get_country_code(protocol->data);
+    ISO3166Country country = iso_3166_find_country_by_code(country_code);
 
     furi_string_printf(
         result,
         "ID: %03hu-%012llu\n"
-        "Country: %hu; Temp.: ",
+        "Country: %hu %s; Temp.: ",
         country_code,
         national_code,
-        country_code);
+        country_code,
+        (country.code == 0) ? "Unknown" : country.two_letter);
 
     float temperature;
     if(protocol_fdx_b_get_temp(protocol->data, &temperature)) {
