@@ -3,6 +3,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <storage/storage.h>
+#include <flipper_format.h>
+#include <furi.h>
 
 #define ISO_3166_COUNTRY_COUNT 249
 
@@ -13,4 +16,4 @@ typedef struct {
     const char* full_name;   // Full country name
 } ISO3166Country;
 
-ISO3166Country iso_3166_find_country_by_code(uint16_t code);
+ISO3166Country iso_3166_find_country_by_code(Storage* storage, uint16_t code);

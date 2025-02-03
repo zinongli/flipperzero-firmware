@@ -288,7 +288,9 @@ void protocol_fdx_b_render_data(ProtocolFDXB* protocol, FuriString* result) {
     uint8_t user_info = bit_lib_get_bits(protocol->data, 55, 5);
     uint8_t replacement_number = bit_lib_get_bits(protocol->data, 60, 3);
     bool animal_flag = bit_lib_get_bit(protocol->data, 63);
-    ISO3166Country country = iso_3166_find_country_by_code(country_code);
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    ISO3166Country country = iso_3166_find_country_by_code(storage, country_code);
+    furi_record_close(RECORD_STORAGE);
 
     furi_string_printf(
         result,
@@ -324,6 +326,9 @@ void protocol_fdx_b_render_data(ProtocolFDXB* protocol, FuriString* result) {
         reserved,
         user_info,
         replacement_number);
+    free((char*)country.two_letter);
+    free((char*)country.three_letter);
+    free((char*)country.full_name);
 }
 
 void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result) {
@@ -332,8 +337,9 @@ void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result
 
     // 10 bit of country code
     uint16_t country_code = protocol_fdx_b_get_country_code(protocol->data);
-    ISO3166Country country = iso_3166_find_country_by_code(country_code);
-
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    ISO3166Country country = iso_3166_find_country_by_code(storage, country_code);
+    furi_record_close(RECORD_STORAGE);
     furi_string_printf(
         result,
         "ID: %03hu-%012llu\n"
@@ -354,6 +360,10 @@ void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result
     } else {
         furi_string_cat(result, "---");
     }
+
+    free((char*)country.two_letter);
+    free((char*)country.three_letter);
+    free((char*)country.full_name);
 }
 
 bool protocol_fdx_b_write_data(ProtocolFDXB* protocol, void* data) {
