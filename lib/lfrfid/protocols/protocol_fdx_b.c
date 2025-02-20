@@ -289,7 +289,8 @@ void protocol_fdx_b_render_data(ProtocolFDXB* protocol, FuriString* result) {
     uint8_t replacement_number = bit_lib_get_bits(protocol->data, 60, 3);
     bool animal_flag = bit_lib_get_bit(protocol->data, 63);
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    ISO3166Country country = iso_3166_find_country_by_code(storage, country_code);
+    FuriString* country_full_name = furi_string_alloc();
+    bool country_found = iso_3166_get_full_name(storage, country_code, country_full_name);
     furi_record_close(RECORD_STORAGE);
 
     furi_string_printf(
@@ -301,7 +302,7 @@ void protocol_fdx_b_render_data(ProtocolFDXB* protocol, FuriString* result) {
         country_code,
         national_code,
         country_code,
-        (country.code == 0) ? "Unknown" : country.full_name);
+        (country_found) ? furi_string_get_cstr(country_full_name) : "Unknown");
 
     float temperature;
     if(protocol_fdx_b_get_temp(protocol->data, &temperature)) {
@@ -326,9 +327,8 @@ void protocol_fdx_b_render_data(ProtocolFDXB* protocol, FuriString* result) {
         reserved,
         user_info,
         replacement_number);
-    free((char*)country.two_letter);
-    free((char*)country.three_letter);
-    free((char*)country.full_name);
+
+    furi_string_free(country_full_name);
 }
 
 void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result) {
@@ -338,7 +338,8 @@ void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result
     // 10 bit of country code
     uint16_t country_code = protocol_fdx_b_get_country_code(protocol->data);
     Storage* storage = furi_record_open(RECORD_STORAGE);
-    ISO3166Country country = iso_3166_find_country_by_code(storage, country_code);
+    FuriString* country_two_letter = furi_string_alloc();
+    bool country_found = iso_3166_get_two_letter(storage, country_code, country_two_letter);
     furi_record_close(RECORD_STORAGE);
     furi_string_printf(
         result,
@@ -347,7 +348,7 @@ void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result
         country_code,
         national_code,
         country_code,
-        (country.code == 0) ? "Unknown" : country.two_letter);
+        (country_found) ? furi_string_get_cstr(country_two_letter) : "Unknown");
 
     float temperature;
     if(protocol_fdx_b_get_temp(protocol->data, &temperature)) {
@@ -361,9 +362,7 @@ void protocol_fdx_b_render_brief_data(ProtocolFDXB* protocol, FuriString* result
         furi_string_cat(result, "---");
     }
 
-    free((char*)country.two_letter);
-    free((char*)country.three_letter);
-    free((char*)country.full_name);
+    furi_string_free(country_two_letter);
 }
 
 bool protocol_fdx_b_write_data(ProtocolFDXB* protocol, void* data) {
