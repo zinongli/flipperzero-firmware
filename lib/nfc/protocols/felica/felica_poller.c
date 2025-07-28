@@ -86,7 +86,7 @@ NfcCommand felica_poller_state_handler_activate(FelicaPoller* instance) {
         instance->callback(instance->general_event, instance->context);
 
         bool skip_auth = instance->auth.context.skip_auth;
-        instance->state = skip_auth ? FelicaPollerStateReadBlocks :
+        instance->state = skip_auth ? FelicaPollerStateTraverseSystem :
                                       FelicaPollerStateAuthenticateInternal;
     } else if(error != FelicaErrorTimeout) {
         instance->felica_event.type = FelicaPollerEventTypeError;
@@ -105,7 +105,7 @@ NfcCommand felica_poller_state_handler_auth_internal(FelicaPoller* instance) {
         instance->data->data.fs.rc.data,
         instance->auth.session_key.data);
 
-    instance->state = FelicaPollerStateReadBlocks;
+    instance->state = FelicaPollerStateTraverseSystem;
 
     uint8_t blocks[3] = {FELICA_BLOCK_INDEX_RC, 0, 0};
     FelicaPollerWriteCommandResponse* tx_resp;
@@ -145,7 +145,6 @@ NfcCommand felica_poller_state_handler_auth_internal(FelicaPoller* instance) {
 
 NfcCommand felica_poller_state_handler_auth_external(FelicaPoller* instance) {
     FURI_LOG_D(TAG, "Auth External");
-    instance->state = FelicaPollerStateReadBlocks;
     uint8_t blocks[2];
 
     instance->data->data.fs.state.data[0] = 1;
@@ -183,6 +182,12 @@ NfcCommand felica_poller_state_handler_auth_external(FelicaPoller* instance) {
         memcpy(instance->data->data.fs.state.data, rx_resp->data, FELICA_DATA_BLOCK_SIZE);
         instance->auth.context.auth_status.external = instance->data->data.fs.state.data[0];
     } while(false);
+    instance->state = FelicaPollerStateTraverseSystem;
+    return NfcCommandContinue;
+}
+
+NfcCommand felica_poller_state_handler_traverse_system(FelicaPoller* instance) {
+    FURI_LOG_D(TAG, "Traverse System");
     instance->state = FelicaPollerStateReadBlocks;
     return NfcCommandContinue;
 }
@@ -266,6 +271,7 @@ static const FelicaPollerReadHandler felica_poller_handler[FelicaPollerStateNum]
     [FelicaPollerStateActivated] = felica_poller_state_handler_activate,
     [FelicaPollerStateAuthenticateInternal] = felica_poller_state_handler_auth_internal,
     [FelicaPollerStateAuthenticateExternal] = felica_poller_state_handler_auth_external,
+    [FelicaPollerStateTraverseSystem] = felica_poller_state_handler_traverse_system,
     [FelicaPollerStateReadBlocks] = felica_poller_state_handler_read_blocks,
     [FelicaPollerStateReadSuccess] = felica_poller_state_handler_read_success,
     [FelicaPollerStateReadFailed] = felica_poller_state_handler_read_failed,

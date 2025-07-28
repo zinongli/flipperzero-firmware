@@ -20,6 +20,7 @@ typedef enum {
     FelicaPollerStateAuthenticateInternal,
     FelicaPollerStateAuthenticateExternal,
     FelicaPollerStateReadBlocks,
+    FelicaPollerStateTraverseSystem,
     FelicaPollerStateReadSuccess,
     FelicaPollerStateReadFailed,
 

@@ -3,6 +3,7 @@
 #include <toolbox/bit_buffer.h>
 #include <nfc/protocols/nfc_device_base_i.h>
 #include <mbedtls/include/mbedtls/des.h>
+#include <lib/toolbox/simple_array.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -145,6 +146,18 @@ typedef union {
     uint8_t dump[sizeof(FelicaFileSystem)];
 } FelicaFSUnion;
 
+typedef struct {
+    uint16_t code;
+    uint8_t attr;
+    uint8_t read_state;
+} FelicaService;
+
+typedef struct {
+    uint16_t code;
+    uint16_t first_idx;
+    uint16_t last_idx;
+} FelicaArea;
+
 /** @brief Structure used to store Felica data and additional values about reading */
 typedef struct {
     FelicaIDm idm;
@@ -152,6 +165,9 @@ typedef struct {
     uint8_t blocks_total;
     uint8_t blocks_read;
     FelicaFSUnion data;
+
+    SimpleArray* services;
+    SimpleArray* areas;
 } FelicaData;
 
 #pragma pack(push, 1)

@@ -1,4 +1,4 @@
-#include "felica.h"
+#include "felica_i.h"
 
 #include <furi.h>
 
@@ -39,24 +39,60 @@ const NfcDeviceBase nfc_device_felica = {
 
 FelicaData* felica_alloc(void) {
     FelicaData* data = malloc(sizeof(FelicaData));
+    furi_check(data);
+
+    data->services = simple_array_alloc(&felica_service_array_cfg);
+    data->areas = simple_array_alloc(&felica_area_array_cfg);
+    furi_check(data->services);
+    furi_check(data->areas);
+
     return data;
 }
 
 void felica_free(FelicaData* data) {
     furi_check(data);
+
+    furi_check(data->services);
+    simple_array_free(data->services);
+
+    furi_check(data->areas);
+    simple_array_free(data->areas);
+
     free(data);
 }
 
 void felica_reset(FelicaData* data) {
     furi_check(data);
-    memset(data, 0, sizeof(FelicaData));
+
+    if(data->services) {
+        simple_array_reset(data->services);
+    }
+
+    if(data->areas) {
+        simple_array_reset(data->areas);
+    }
+
+    data->blocks_read = 0;
+    data->blocks_total = 0;
+    memset(&data->idm, 0, sizeof(data->idm));
+    memset(&data->pmm, 0, sizeof(data->pmm));
+    memset(&data->data, 0, sizeof(data->data));
 }
 
 void felica_copy(FelicaData* data, const FelicaData* other) {
     furi_check(data);
     furi_check(other);
 
-    *data = *other;
+    felica_reset(data);
+
+    data->idm = other->idm;
+    data->pmm = other->pmm;
+    data->blocks_total = other->blocks_total;
+    data->blocks_read = other->blocks_read;
+    data->data = other->data;
+
+    simple_array_copy(data->services, other->services);
+    simple_array_copy(data->areas, other->areas);
 }
 
 bool felica_verify(FelicaData* data, const FuriString* device_type) {
@@ -153,7 +189,12 @@ bool felica_is_equal(const FelicaData* data, const FelicaData* other) {
     furi_check(data);
     furi_check(other);
 
-    return memcmp(data, other, sizeof(FelicaData)) == 0;
+    return memcmp(data->idm.data, other->idm.data, sizeof(FelicaIDm)) == 0 &&
+           memcmp(data->pmm.data, other->pmm.data, sizeof(FelicaPMm)) == 0 &&
+           data->blocks_total == other->blocks_total && data->blocks_read == other->blocks_read &&
+           memcmp(&data->data, &other->data, sizeof(data->data)) == 0 &&
+           simple_array_is_equal(data->services, other->services) &&
+           simple_array_is_equal(data->areas, other->areas);
 }
 
 const char* felica_get_device_name(const FelicaData* data, NfcDeviceNameType name_type) {
