@@ -41,6 +41,13 @@ void nfc_render_felica_info(
         }
     }
     nfc_render_felica_blocks_count(data, str, true);
+
+    furi_string_cat_printf(str, "\n\n");
+    furi_string_cat_printf(
+        str,
+        "Services found: %lu, Areas found: %lu\n",
+        simple_array_get_count(data->services),
+        simple_array_get_count(data->areas));
 }
 
 static void nfc_render_felica_block_name(

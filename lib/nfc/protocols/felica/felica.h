@@ -226,11 +226,6 @@ typedef struct {
 typedef struct {
     FelicaCommandHeaderRaw header;
     uint8_t data[];
-} FelicaCommandResponseRaw;
-
-typedef struct {
-    FelicaCommandHeaderRaw header;
-    uint8_t data[];
 } FelicaListServiceCommandResponse;
 
 typedef FelicaCommandResponseHeader FelicaListenerWriteCommandResponse;

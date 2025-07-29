@@ -1,4 +1,5 @@
 #include "felica_poller_i.h"
+#include "felica_i.h"
 
 #include <nfc/protocols/nfc_poller_base.h>
 
@@ -190,35 +191,76 @@ NfcCommand felica_poller_state_handler_traverse_system(FelicaPoller* instance) {
     FURI_LOG_D(TAG, "Traverse System");
 
     FelicaListServiceCommandResponse* response;
-    for(uint16_t cursor = 0; cursor < 0x0010; cursor++) {
+
+    DynamicVector service_buffer;
+    DynamicVector area_buffer;
+    dynamic_vector_init(&service_buffer, sizeof(FelicaService));
+    dynamic_vector_init(&area_buffer, sizeof(FelicaArea));
+
+    for(uint16_t cursor = 0; cursor < 0xFFFF; cursor++) {
         FelicaError error = felica_poller_list_service_by_cursor(instance, cursor, &response);
         if(error != FelicaErrorNone) {
             FURI_LOG_E(TAG, "ERR %d @ cursor %04X", error, cursor);
             break;
         }
 
-        uint8_t len = response->header.length; /* 0x0C or 0x0E */
+        uint8_t len = response->header.length;
+        const uint8_t* list_service_payload = response->data;
+        uint16_t code_begin = list_service_payload[0] | (list_service_payload[1] << 8);
+
         if(len != 0x0C && len != 0x0E) {
-            FURI_LOG_E(TAG, "Bad LEN 0x%02X @ cursor %04X", len, cursor);
+            FURI_LOG_E(TAG, "Bad command resp length 0x%02X @ cursor %04X", len, cursor);
             break;
         }
 
-        /* ----- payload ------------------------------------------- */
-        const uint8_t* p = response->data; /* first byte of code */
-        uint16_t code_begin = p[0] | (p[1] << 8);
-
-        if(code_begin == 0xFFFF) { /* terminator */
-            FURI_LOG_I(TAG, "-- end of list --");
+        if(code_begin == 0xFFFF) {
+            FURI_LOG_D(TAG, "Traverse complete");
             break;
         }
 
-        if(len == 0x0E) { /* AREA node */
-            uint16_t code_end = p[2] | (p[3] << 8);
-            FURI_LOG_I(TAG, "area  %04X - %04X", code_begin, code_end);
-        } else { /* SERVICE node */
-            FURI_LOG_I(TAG, "svc   %04X", code_begin);
+        if(len == 0x0E) {
+            FelicaArea* area = dynamic_vector_push_back(&area_buffer);
+            if(!area) break;
+            area->code = code_begin;
+            area->first_idx = dynamic_vector_size(&service_buffer);
+            area->last_idx = 0;
+
+        } else {
+            FelicaService* svc = dynamic_vector_push_back(&service_buffer);
+            if(!svc) break;
+            svc->code = code_begin;
+            svc->attr = code_begin & 0x3F;
+            svc->read_state = 0;
+
+            if(dynamic_vector_size(&area_buffer)) {
+                FelicaArea* current_area =
+                    dynamic_vector_get(&area_buffer, dynamic_vector_size(&area_buffer) - 1);
+                current_area->last_idx = dynamic_vector_size(&service_buffer) - 1;
+            }
         }
     }
+
+    simple_array_init(instance->data->services, dynamic_vector_size(&service_buffer));
+    memcpy(
+        simple_array_get(instance->data->services, 0),
+        service_buffer.data,
+        service_buffer.count * sizeof(FelicaService));
+
+    simple_array_init(instance->data->areas, dynamic_vector_size(&area_buffer));
+    memcpy(
+        simple_array_get(instance->data->areas, 0),
+        area_buffer.data,
+        area_buffer.count * sizeof(FelicaArea));
+
+    FURI_LOG_I(
+        TAG,
+        "Services found: %lu, Areas found: %lu",
+        simple_array_get_count(instance->data->services),
+        simple_array_get_count(instance->data->areas));
+
+    dynamic_vector_free(&service_buffer);
+    dynamic_vector_free(&area_buffer);
+
     instance->state = FelicaPollerStateReadBlocks;
     return NfcCommandContinue;
 }
