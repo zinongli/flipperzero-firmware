@@ -290,6 +290,9 @@ void felica_calculate_mac_write(
     const uint8_t* wcnt,
     const uint8_t* data,
     uint8_t* mac);
+
+void felica_write_directory_tree(const FelicaData* data, FuriString* str);
+
 #ifdef __cplusplus
 }
 #endif

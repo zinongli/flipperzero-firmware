@@ -161,13 +161,58 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
                ff, FELICA_MANUFACTURE_PARAMETER, data->pmm.data, FELICA_PMM_SIZE))
             break;
 
+        if(!flipper_format_write_empty_line(ff)) break;
+
+        FuriString* temp_str = furi_string_alloc();
+        uint32_t area_count = simple_array_get_count(data->areas);
+        uint32_t service_count = simple_array_get_count(data->services);
+
+        furi_string_reset(temp_str);
+        furi_string_printf(temp_str, "%lu", area_count);
+        for(uint32_t i = 0; i < area_count; i++) {
+            FelicaArea* area = simple_array_get(data->areas, i);
+            furi_string_cat_printf(
+                temp_str,
+                "\nArea %04X: services #%03d-#%03d",
+                area->code,
+                area->first_idx,
+                area->last_idx);
+        }
+        if(!flipper_format_write_string(ff, "Area found", temp_str)) break;
+
+        if(!flipper_format_write_empty_line(ff)) break;
+
+        furi_string_reset(temp_str);
+        furi_string_printf(temp_str, "%lu", service_count);
+        for(uint32_t i = 0; i < service_count; i++) {
+            FelicaService* service = simple_array_get(data->services, i);
+            bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
+            bool is_read_only = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
+            furi_string_cat_printf(
+                temp_str,
+                "\n| Service %04X | Attrib. %02X %s%s%s",
+                service->code,
+                service->attr,
+                is_public ? "| Public  " : "| Private ",
+                is_read_only ? "| Read-only " : "| Writable  ",
+                service->read_state ? "|  Read  |" : "| Unread |");
+        }
+        if(!flipper_format_write_string(ff, "Service found", temp_str)) break;
+        if(!flipper_format_write_empty_line(ff)) break;
+
+        furi_string_reset(temp_str);
+        furi_string_printf(
+            temp_str, "\n::: ... are public services\n||| ... are private services\n");
+        felica_write_directory_tree(data, temp_str);
+        if(!flipper_format_write_string(ff, "Directory Tree", temp_str)) break;
+
         uint32_t blocks_total = data->blocks_total;
         uint32_t blocks_read = data->blocks_read;
         if(!flipper_format_write_uint32(ff, "Blocks total", &blocks_total, 1)) break;
         if(!flipper_format_write_uint32(ff, "Blocks read", &blocks_read, 1)) break;
 
         saved = true;
-        FuriString* temp_str = furi_string_alloc();
+        furi_string_reset(temp_str);
         for(uint8_t i = 0; i < blocks_total; i++) {
             furi_string_printf(temp_str, "Block %d", i);
             if(!flipper_format_write_hex(
@@ -394,4 +439,43 @@ void felica_calculate_mac_write(
     memcpy(session_swapped, session_key + 8, 8);
     memcpy(session_swapped + 8, session_key, 8);
     felica_calculate_mac(ctx, session_swapped, rc, first_block, data, FELICA_DATA_BLOCK_SIZE, mac);
+}
+
+void felica_write_directory_tree(const FelicaData* data, FuriString* str) {
+    furi_check(data);
+    furi_check(str);
+
+    furi_string_cat_str(str, "\n");
+
+    uint16_t area_last_stack[8];
+    uint8_t depth = 0;
+
+    size_t area_iter = 0;
+    const size_t area_count = simple_array_get_count(data->areas);
+    const size_t service_count = simple_array_get_count(data->services);
+
+    for(size_t svc_idx = 0; svc_idx < service_count; ++svc_idx) {
+        while(area_iter < area_count) {
+            const FelicaArea* next_area = simple_array_get(data->areas, area_iter);
+            if(next_area->first_idx != svc_idx) break;
+
+            for(uint8_t i = 0; i < depth - 1; ++i)
+                furi_string_cat_printf(str, "| ");
+            furi_string_cat_printf(str, depth ? "|" : "");
+            furi_string_cat_printf(str, "- AREA_%04X/\n", next_area->code >> 6);
+
+            area_last_stack[depth++] = next_area->last_idx;
+            area_iter++;
+        }
+
+        const FelicaService* service = simple_array_get(data->services, svc_idx);
+        bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
+
+        for(uint8_t i = 0; i < depth - 1; ++i)
+            furi_string_cat_printf(str, is_public ? ": " : "| ");
+        furi_string_cat_printf(str, is_public ? ":" : "|");
+        furi_string_cat_printf(str, "- serv_%04X\n", service->code);
+
+        if(depth && svc_idx >= area_last_stack[depth - 1]) depth--;
+    }
 }
