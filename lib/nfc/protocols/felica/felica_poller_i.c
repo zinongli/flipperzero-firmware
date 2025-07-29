@@ -248,14 +248,6 @@ FelicaError felica_poller_list_service_by_cursor(
     felica_poller_prepare_tx_buffer_raw(
         instance, FELICA_CMD_LIST_SERVICE_CODE, data, sizeof(data));
 
-    FuriString* raw_command_str = furi_string_alloc();
-    for(size_t i = 0; i < bit_buffer_get_size_bytes(instance->tx_buffer); i++) {
-        uint8_t raw_command = bit_buffer_get_byte(instance->tx_buffer, i);
-        furi_string_cat_printf(raw_command_str, "%02X ", raw_command);
-    }
-    FURI_LOG_D(TAG, "List service by cursor command: %s", furi_string_get_cstr(raw_command_str));
-    furi_string_free(raw_command_str);
-
     bit_buffer_reset(instance->rx_buffer);
 
     FelicaError error = felica_poller_frame_exchange(
