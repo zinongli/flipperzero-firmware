@@ -51,6 +51,9 @@ extern "C" {
 #define FELICA_CMD_LIST_SERVICE_CODE      0x0A
 #define FELICA_CMD_LIST_SERVICE_CODE_RESP 0x0B
 
+#define FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ (0b000001)
+#define FELICA_SERVICE_ATTRIBUTE_READ_ONLY   (0b000010)
+
 /** @brief Type of possible Felica errors */
 typedef enum {
     FelicaErrorNone,
@@ -198,7 +201,6 @@ typedef struct {
     FelicaIDm idm;
 } FelicaCommandHeaderRaw;
 #pragma pack(pop)
-
 
 typedef struct {
     uint8_t service_code : 4;

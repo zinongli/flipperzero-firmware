@@ -40,7 +40,7 @@ void nfc_render_felica_info(
             furi_string_cat_printf(str, "%02X ", data->pmm.data[i]);
         }
     }
-    
+
     furi_string_cat_printf(str, "\n");
     furi_string_cat_printf(
         str,
@@ -49,7 +49,6 @@ void nfc_render_felica_info(
         simple_array_get_count(data->areas));
 
     nfc_render_felica_blocks_count(data, str, true);
-
 }
 
 static void nfc_render_felica_block_name(
@@ -99,10 +98,13 @@ static void felica_append_directory_tree(const FelicaData* data, FuriString* str
     furi_string_cat_printf(str, "\e#Directory Tree:\n");
 
     if(area_cnt == 0 || svc_cnt == 0) {
-        furi_string_cat_printf(str, "No services or areas found.\n");
+        furi_string_cat_printf(str, "\nNo services or areas found.\n");
         return;
     } else {
-        furi_string_cat_printf(str, "%zu areas found.\n%zu services found.\n", area_cnt, svc_cnt);
+        furi_string_cat_printf(
+            str, "\n%zu areas found.\n%zu services found.\n", area_cnt, svc_cnt);
+        furi_string_cat_printf(
+            str, "\n| is readable, : requires auth. \n");
     }
 
     for(size_t svc_idx = 0; svc_idx < svc_cnt; ++svc_idx) {
@@ -110,7 +112,7 @@ static void felica_append_directory_tree(const FelicaData* data, FuriString* str
             const FelicaArea* next_area = simple_array_get(data->areas, area_iter);
             if(next_area->first_idx != svc_idx) break;
 
-            for(uint8_t i = 0; i < depth-1; ++i)
+            for(uint8_t i = 0; i < depth - 1; ++i)
                 furi_string_cat_printf(str, "| ");
             furi_string_cat_printf(str, depth ? "|" : "");
             furi_string_cat_printf(str, "- AREA_%04X/\n", next_area->code >> 6);
@@ -119,14 +121,15 @@ static void felica_append_directory_tree(const FelicaData* data, FuriString* str
             area_iter++;
         }
 
-        for(uint8_t i = 0; i < depth-1; ++i)
-            furi_string_cat_printf(str, "| ");
-        furi_string_cat_printf(str, "|");
-        const FelicaService* svc = simple_array_get(data->services, svc_idx);
-        furi_string_cat_printf(str, "- serv_%04X\n", svc->code);
+        const FelicaService* service = simple_array_get(data->services, svc_idx);
+        bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) == 0;
 
-        if(depth && svc_idx >= area_last_stack[depth - 1])
-            depth--;
+        for(uint8_t i = 0; i < depth - 1; ++i)
+            furi_string_cat_printf(str, is_public ? "| " : ": ");
+        furi_string_cat_printf(str, is_public ? "|" : ":");
+        furi_string_cat_printf(str, "- serv_%04X\n", service->code);
+
+        if(depth && svc_idx >= area_last_stack[depth - 1]) depth--;
     }
 
     furi_string_cat_printf(str, "\n");
@@ -136,6 +139,8 @@ void nfc_render_felica_dump(const FelicaData* data, FuriString* str) {
     FuriString* name = furi_string_alloc();
 
     felica_append_directory_tree(data, str);
+
+    furi_string_cat_printf(str, "\e#Blocks read:\n");
 
     for(size_t i = 0; i < 14; i++) {
         furi_string_printf(name, "S_PAD%d", i);
