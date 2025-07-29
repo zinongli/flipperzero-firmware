@@ -1,5 +1,5 @@
 #include "felica_poller_i.h"
-#include "felica_i.h"
+#include <lib/toolbox/dynamic_vector.h>
 
 #include <nfc/protocols/nfc_poller_base.h>
 
