@@ -94,7 +94,6 @@ void nfc_render_felica_dump(const FelicaData* data, FuriString* str) {
 
     if(area_count == 0 || service_count == 0) {
         furi_string_cat_printf(str, "No services or areas found.\n");
-        return;
     } else {
         furi_string_cat_printf(
             str, "%zu areas found.\n%zu services found.\n\n", area_count, service_count);
