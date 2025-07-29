@@ -188,6 +188,37 @@ NfcCommand felica_poller_state_handler_auth_external(FelicaPoller* instance) {
 
 NfcCommand felica_poller_state_handler_traverse_system(FelicaPoller* instance) {
     FURI_LOG_D(TAG, "Traverse System");
+
+    FelicaListServiceCommandResponse* response;
+    for(uint16_t cursor = 0; cursor < 0x0010; cursor++) {
+        FelicaError error = felica_poller_list_service_by_cursor(instance, cursor, &response);
+        if(error != FelicaErrorNone) {
+            FURI_LOG_E(TAG, "ERR %d @ cursor %04X", error, cursor);
+            break;
+        }
+
+        uint8_t len = response->header.length; /* 0x0C or 0x0E */
+        if(len != 0x0C && len != 0x0E) {
+            FURI_LOG_E(TAG, "Bad LEN 0x%02X @ cursor %04X", len, cursor);
+            break;
+        }
+
+        /* ----- payload ------------------------------------------- */
+        const uint8_t* p = response->data; /* first byte of code */
+        uint16_t code_begin = p[0] | (p[1] << 8);
+
+        if(code_begin == 0xFFFF) { /* terminator */
+            FURI_LOG_I(TAG, "-- end of list --");
+            break;
+        }
+
+        if(len == 0x0E) { /* AREA node */
+            uint16_t code_end = p[2] | (p[3] << 8);
+            FURI_LOG_I(TAG, "area  %04X - %04X", code_begin, code_end);
+        } else { /* SERVICE node */
+            FURI_LOG_I(TAG, "svc   %04X", code_begin);
+        }
+    }
     instance->state = FelicaPollerStateReadBlocks;
     return NfcCommandContinue;
 }

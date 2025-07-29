@@ -106,6 +106,11 @@ FelicaError felica_poller_frame_exchange(
     BitBuffer* rx_buffer,
     uint32_t fwt);
 
+FelicaError felica_poller_list_service_by_cursor(
+    FelicaPoller* instance,
+    uint16_t cursor,
+    FelicaListServiceCommandResponse** response_ptr);
+
 #ifdef __cplusplus
 }
 #endif

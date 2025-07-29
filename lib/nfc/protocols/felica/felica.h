@@ -48,6 +48,9 @@ extern "C" {
 #define FELICA_TIME_SLOT_8      (0x07U)
 #define FELICA_TIME_SLOT_16     (0x0FU)
 
+#define FELICA_CMD_LIST_SERVICE_CODE      0x0A
+#define FELICA_CMD_LIST_SERVICE_CODE_RESP 0x0B
+
 /** @brief Type of possible Felica errors */
 typedef enum {
     FelicaErrorNone,
@@ -188,6 +191,15 @@ typedef struct {
     uint8_t SF2;
 } FelicaCommandResponseHeader;
 
+#pragma pack(push, 1)
+typedef struct {
+    uint8_t length;
+    uint8_t command;
+    FelicaIDm idm;
+} FelicaCommandHeaderRaw;
+#pragma pack(pop)
+
+
 typedef struct {
     uint8_t service_code : 4;
     uint8_t access_mode  : 3;
@@ -210,6 +222,16 @@ typedef struct {
     uint8_t block_count;
     uint8_t data[];
 } FelicaListenerReadCommandResponse;
+
+typedef struct {
+    FelicaCommandHeaderRaw header;
+    uint8_t data[];
+} FelicaCommandResponseRaw;
+
+typedef struct {
+    FelicaCommandHeaderRaw header;
+    uint8_t data[];
+} FelicaListServiceCommandResponse;
 
 typedef FelicaCommandResponseHeader FelicaListenerWriteCommandResponse;
 
