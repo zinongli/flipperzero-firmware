@@ -41,6 +41,11 @@ bool iso_3166_get_two_letter(Storage* storage, uint16_t country_code, FuriString
     bool found = lfrfid_search_data(storage, country_code, line);
 
     if(found) {
+        if(furi_string_size(line) < 2) {
+            furi_string_free(line);
+            FURI_LOG_E("Lfrifd:Iso_3166", "Not enough data for two-letter code");
+            return false; // Not enough data for a two-letter code
+        }
         // AFAFGAfghanistan
         furi_string_left(line, 2); // AF
         furi_string_set(out_two_letter, line);
@@ -57,6 +62,11 @@ bool iso_3166_get_three_letter(
     bool found = lfrfid_search_data(storage, country_code, line);
 
     if(found) {
+        if(furi_string_size(line) < 5) {
+            furi_string_free(line);
+            FURI_LOG_E("Lfrifd:Iso_3166", "Not enough data for three-letter code");
+            return false; // Not enough data for a three-letter code
+        }
         // AFAFGAfghanistan
         furi_string_left(line, 5); // AFAFG
         furi_string_right(line, 2); // AFG
@@ -71,6 +81,11 @@ bool iso_3166_get_full_name(Storage* storage, uint16_t country_code, FuriString*
     bool found = lfrfid_search_data(storage, country_code, line);
 
     if(found) {
+        if(furi_string_size(line) < 6) {
+            furi_string_free(line);
+            FURI_LOG_E("Lfrifd:Iso_3166", "Not enough data for full name");
+            return false; // Not enough data for a full name
+        }
         // AFAFGAfghanistan
         furi_string_right(line, 5); // Afghanistan
         furi_string_set(out_full_name, line);
