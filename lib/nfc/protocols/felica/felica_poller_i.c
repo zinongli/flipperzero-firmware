@@ -1,7 +1,6 @@
 #include "felica_poller_i.h"
 
 #include <nfc/helpers/felica_crc.h>
-#include <lib/bit_lib/bit_lib.h>
 
 #define TAG "FelicaPoller"
 
