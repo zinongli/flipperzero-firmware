@@ -40,14 +40,16 @@ void nfc_render_felica_info(
             furi_string_cat_printf(str, "%02X ", data->pmm.data[i]);
         }
     }
-    nfc_render_felica_blocks_count(data, str, true);
-
-    furi_string_cat_printf(str, "\n\n");
+    
+    furi_string_cat_printf(str, "\n");
     furi_string_cat_printf(
         str,
-        "Services found: %lu, Areas found: %lu\n",
+        "Services found: %lu \nAreas found: %lu",
         simple_array_get_count(data->services),
         simple_array_get_count(data->areas));
+
+    nfc_render_felica_blocks_count(data, str, true);
+
 }
 
 static void nfc_render_felica_block_name(
@@ -83,8 +85,58 @@ static void nfc_render_felica_block(
     nfc_render_felica_block_data(block, str);
 }
 
+static void felica_append_directory_tree(const FelicaData* data, FuriString* str) {
+    furi_check(data);
+    furi_check(str);
+
+    uint16_t area_last_stack[8];
+    uint8_t depth = 0;
+
+    size_t area_iter = 0;
+    const size_t area_cnt = simple_array_get_count(data->areas);
+    const size_t svc_cnt = simple_array_get_count(data->services);
+
+    furi_string_cat_printf(str, "\e#Directory Tree:\n");
+
+    if(area_cnt == 0 || svc_cnt == 0) {
+        furi_string_cat_printf(str, "No services or areas found.\n");
+        return;
+    } else {
+        furi_string_cat_printf(str, "%zu areas found.\n%zu services found.\n", area_cnt, svc_cnt);
+    }
+
+    for(size_t svc_idx = 0; svc_idx < svc_cnt; ++svc_idx) {
+        while(area_iter < area_cnt) {
+            const FelicaArea* next_area = simple_array_get(data->areas, area_iter);
+            if(next_area->first_idx != svc_idx) break;
+
+            for(uint8_t i = 0; i < depth-1; ++i)
+                furi_string_cat_printf(str, "| ");
+            furi_string_cat_printf(str, depth ? "|" : "");
+            furi_string_cat_printf(str, "- AREA_%04X/\n", next_area->code >> 6);
+
+            area_last_stack[depth++] = next_area->last_idx;
+            area_iter++;
+        }
+
+        for(uint8_t i = 0; i < depth-1; ++i)
+            furi_string_cat_printf(str, "| ");
+        furi_string_cat_printf(str, "|");
+        const FelicaService* svc = simple_array_get(data->services, svc_idx);
+        furi_string_cat_printf(str, "- serv_%04X\n", svc->code);
+
+        if(depth && svc_idx >= area_last_stack[depth - 1])
+            depth--;
+    }
+
+    furi_string_cat_printf(str, "\n");
+}
+
 void nfc_render_felica_dump(const FelicaData* data, FuriString* str) {
     FuriString* name = furi_string_alloc();
+
+    felica_append_directory_tree(data, str);
+
     for(size_t i = 0; i < 14; i++) {
         furi_string_printf(name, "S_PAD%d", i);
         uint8_t suf_cnt = 18;
