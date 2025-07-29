@@ -98,13 +98,13 @@ static void felica_append_directory_tree(const FelicaData* data, FuriString* str
     furi_string_cat_printf(str, "\e#Directory Tree:\n");
 
     if(area_cnt == 0 || svc_cnt == 0) {
-        furi_string_cat_printf(str, "\nNo services or areas found.\n");
+        furi_string_cat_printf(str, "No services or areas found.\n");
         return;
     } else {
         furi_string_cat_printf(
-            str, "\n%zu areas found.\n%zu services found.\n", area_cnt, svc_cnt);
+            str, "%zu areas found.\n%zu services found.\n\n", area_cnt, svc_cnt);
         furi_string_cat_printf(
-            str, "\n| is readable, : requires auth. \n");
+            str, "::: ... are readable services\n||| ...are locked services\n\n");
     }
 
     for(size_t svc_idx = 0; svc_idx < svc_cnt; ++svc_idx) {
@@ -122,11 +122,11 @@ static void felica_append_directory_tree(const FelicaData* data, FuriString* str
         }
 
         const FelicaService* service = simple_array_get(data->services, svc_idx);
-        bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) == 0;
+        bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
 
         for(uint8_t i = 0; i < depth - 1; ++i)
-            furi_string_cat_printf(str, is_public ? "| " : ": ");
-        furi_string_cat_printf(str, is_public ? "|" : ":");
+            furi_string_cat_printf(str, is_public ? ": " : "| ");
+        furi_string_cat_printf(str, is_public ? ":" : "|");
         furi_string_cat_printf(str, "- serv_%04X\n", service->code);
 
         if(depth && svc_idx >= area_last_stack[depth - 1]) depth--;
