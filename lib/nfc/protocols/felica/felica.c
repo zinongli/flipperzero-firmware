@@ -11,7 +11,7 @@
 #define FELICA_MANUFACTURE_ID        "Manufacture id"
 #define FELICA_MANUFACTURE_PARAMETER "Manufacture parameter"
 
-static const uint32_t felica_data_format_version = 1;
+static const uint32_t felica_data_format_version = 2;
 
 /** @brief This is used in felica_prepare_first_block to define which 
  * type of block needs to be prepared.
@@ -167,21 +167,24 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
 
         FuriString* str_data_buffer = furi_string_alloc();
         FuriString* str_key_buffer = furi_string_alloc();
-
-        // Area count
         uint32_t area_count = simple_array_get_count(data->areas);
         uint32_t service_count = simple_array_get_count(data->services);
+        // Note: The theoretical max area/service count is 2^10 
+        // So uint16_t is already enough for practical usage
+        // The following key index print will use %03X because 12 bits are enough to cover 0-1023
+
+        // Area count
         if(!flipper_format_write_uint32(ff, "Area found", &area_count, 1)) break;
 
         // Area data
         furi_string_reset(str_data_buffer);
         furi_string_reset(str_key_buffer);
-        for(uint32_t i = 0; i < area_count; i++) {
+        for(uint16_t i = 0; i < area_count; i++) {
             FelicaArea* area = simple_array_get(data->areas, i);
-            furi_string_printf(str_key_buffer, "Area %ld", i);
+            furi_string_printf(str_key_buffer, "Area %03X", i);
             furi_string_printf(
                 str_data_buffer,
-                "| Code %04X | Services #%03d-#%03d |",
+                "| Code %04X | Services #%03X-#%03X |",
                 area->code,
                 area->first_idx,
                 area->last_idx);
@@ -197,9 +200,9 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
         // Service data
         furi_string_reset(str_data_buffer);
         furi_string_reset(str_key_buffer);
-        for(uint32_t i = 0; i < service_count; i++) {
+        for(uint16_t i = 0; i < service_count; i++) {
             FelicaService* service = simple_array_get(data->services, i);
-            furi_string_printf(str_key_buffer, "Service %ld", i);
+            furi_string_printf(str_key_buffer, "Service %03X", i);
             bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
             bool is_read_only = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
             furi_string_printf(
