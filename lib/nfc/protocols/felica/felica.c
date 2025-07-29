@@ -128,12 +128,12 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
         data->blocks_total = (uint8_t)blocks_total;
         data->blocks_read = (uint8_t)blocks_read;
 
-        FuriString* temp_str = furi_string_alloc();
+        FuriString* str_data_buffer = furi_string_alloc();
         for(uint8_t i = 0; i < data->blocks_total; i++) {
-            furi_string_printf(temp_str, "Block %d", i);
+            furi_string_printf(str_data_buffer, "Block %d", i);
             if(!flipper_format_read_hex(
                    ff,
-                   furi_string_get_cstr(temp_str),
+                   furi_string_get_cstr(str_data_buffer),
                    (&data->data.dump[i * sizeof(FelicaBlock)]),
                    sizeof(FelicaBlock))) {
                 parsed = false;
@@ -151,6 +151,7 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
     bool saved = false;
 
     do {
+        // Header
         if(!flipper_format_write_comment_cstr(ff, FELICA_PROTOCOL_NAME " specific data")) break;
         if(!flipper_format_write_uint32(
                ff, FELICA_DATA_FORMAT_VERSION, &felica_data_format_version, 1))
@@ -160,71 +161,94 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
         if(!flipper_format_write_hex(
                ff, FELICA_MANUFACTURE_PARAMETER, data->pmm.data, FELICA_PMM_SIZE))
             break;
-
         if(!flipper_format_write_empty_line(ff)) break;
 
-        FuriString* temp_str = furi_string_alloc();
+        saved = true;
+
+        FuriString* str_data_buffer = furi_string_alloc();
+        FuriString* str_key_buffer = furi_string_alloc();
+
+        // Area count
         uint32_t area_count = simple_array_get_count(data->areas);
         uint32_t service_count = simple_array_get_count(data->services);
+        if(!flipper_format_write_uint32(ff, "Area found", &area_count, 1)) break;
 
-        furi_string_reset(temp_str);
-        furi_string_printf(temp_str, "%lu", area_count);
+        // Area data
+        furi_string_reset(str_data_buffer);
+        furi_string_reset(str_key_buffer);
         for(uint32_t i = 0; i < area_count; i++) {
             FelicaArea* area = simple_array_get(data->areas, i);
-            furi_string_cat_printf(
-                temp_str,
-                "\nArea %04X: services #%03d-#%03d",
+            furi_string_printf(str_key_buffer, "Area %ld", i);
+            furi_string_printf(
+                str_data_buffer,
+                "| Code %04X | Services #%03d-#%03d |",
                 area->code,
                 area->first_idx,
                 area->last_idx);
+            if(!flipper_format_write_string(
+                   ff, furi_string_get_cstr(str_key_buffer), str_data_buffer))
+                break;
         }
-        if(!flipper_format_write_string(ff, "Area found", temp_str)) break;
-
         if(!flipper_format_write_empty_line(ff)) break;
 
-        furi_string_reset(temp_str);
-        furi_string_printf(temp_str, "%lu", service_count);
+        // Service count
+        if(!flipper_format_write_uint32(ff, "Service found", &service_count, 1)) break;
+
+        // Service data
+        furi_string_reset(str_data_buffer);
+        furi_string_reset(str_key_buffer);
         for(uint32_t i = 0; i < service_count; i++) {
             FelicaService* service = simple_array_get(data->services, i);
+            furi_string_printf(str_key_buffer, "Service %ld", i);
             bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
             bool is_read_only = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
-            furi_string_cat_printf(
-                temp_str,
-                "\n| Service %04X | Attrib. %02X %s%s%s",
+            furi_string_printf(
+                str_data_buffer,
+                "| Code %04X | Attrib. %02X %s%s%s",
                 service->code,
                 service->attr,
                 is_public ? "| Public  " : "| Private ",
                 is_read_only ? "| Read-only " : "| Writable  ",
                 service->read_state ? "|  Read  |" : "| Unread |");
+            if(!flipper_format_write_string(
+                   ff, furi_string_get_cstr(str_key_buffer), str_data_buffer))
+                break;
         }
-        if(!flipper_format_write_string(ff, "Service found", temp_str)) break;
         if(!flipper_format_write_empty_line(ff)) break;
 
-        furi_string_reset(temp_str);
+        // Directory tree
+        furi_string_reset(str_data_buffer);
+        furi_string_reset(str_key_buffer);
         furi_string_printf(
-            temp_str, "\n::: ... are public services\n||| ... are private services\n");
-        felica_write_directory_tree(data, temp_str);
-        if(!flipper_format_write_string(ff, "Directory Tree", temp_str)) break;
+            str_data_buffer, "\n::: ... are public services\n||| ... are private services\n");
+        felica_write_directory_tree(data, str_data_buffer);
+        if(!flipper_format_write_string(ff, "Directory Tree", str_data_buffer)) break;
 
+        // Blocks count
         uint32_t blocks_total = data->blocks_total;
         uint32_t blocks_read = data->blocks_read;
         if(!flipper_format_write_uint32(ff, "Blocks total", &blocks_total, 1)) break;
         if(!flipper_format_write_uint32(ff, "Blocks read", &blocks_read, 1)) break;
 
-        saved = true;
-        furi_string_reset(temp_str);
+        // Blocks data
+        furi_string_reset(str_data_buffer);
+        furi_string_reset(str_key_buffer);
         for(uint8_t i = 0; i < blocks_total; i++) {
-            furi_string_printf(temp_str, "Block %d", i);
+            furi_string_printf(str_key_buffer, "Block %d", i);
             if(!flipper_format_write_hex(
                    ff,
-                   furi_string_get_cstr(temp_str),
+                   furi_string_get_cstr(str_key_buffer),
                    (&data->data.dump[i * sizeof(FelicaBlock)]),
                    sizeof(FelicaBlock))) {
                 saved = false;
                 break;
             }
         }
-        furi_string_free(temp_str);
+
+        // Clean up
+        furi_string_free(str_data_buffer);
+        furi_string_free(str_key_buffer);
+
     } while(false);
 
     return saved;
