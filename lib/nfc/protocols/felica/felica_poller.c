@@ -272,7 +272,6 @@ NfcCommand felica_poller_state_handler_traverse_standard_system(FelicaPoller* in
             if(!svc) break;
             svc->code = code_begin;
             svc->attr = code_begin & 0x3F;
-            svc->read_state = 0;
 
             if(dynamic_vector_size(&area_buffer)) {
                 FelicaArea* current_area =

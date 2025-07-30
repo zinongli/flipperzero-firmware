@@ -167,7 +167,6 @@ typedef union {
 typedef struct {
     uint16_t code;
     uint8_t attr;
-    uint8_t read_state;
 } FelicaService;
 
 typedef struct {

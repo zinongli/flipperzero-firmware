@@ -223,7 +223,6 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
                        furi_string_get_cstr(str_data_buffer), "| Code %04hX |", &service->code)) {
                     break;
                 }
-                service->read_state = 0;
                 service->attr = service->code & 0x3F;
             }
         } while(false);
@@ -384,12 +383,11 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
                 bool is_read_only = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
                 furi_string_printf(
                     str_data_buffer,
-                    "| Code %04X | Attrib. %02X %s%s%s",
+                    "| Code %04X | Attrib. %02X %s%s",
                     service->code,
                     service->attr,
                     is_public ? "| Public  " : "| Private ",
-                    is_read_only ? "| Read-only " : "| Writable  ",
-                    service->read_state ? "|  Read  |" : "| Unread |");
+                    is_read_only ? "| Read-only |" : "| Writable  |");
                 if(!flipper_format_write_string(
                        ff, furi_string_get_cstr(str_key_buffer), str_data_buffer))
                     break;
