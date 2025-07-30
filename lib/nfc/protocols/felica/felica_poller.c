@@ -310,47 +310,67 @@ NfcCommand felica_poller_state_handler_traverse_standard_system(FelicaPoller* in
 NfcCommand felica_poller_state_handler_read_standard_blocks(FelicaPoller* instance) {
     FURI_LOG_D(TAG, "Read Standard Blocks");
 
-    uint8_t block_count = 1;
-    uint8_t block_list[4] = {0, 0, 0, 0};
-    block_list[0] = instance->block_index;
+    uint32_t service_count = simple_array_get_count(instance->data->services);
 
-    instance->block_index++;
-    if(instance->block_index == FELICA_BLOCK_INDEX_REG + 1) {
-        instance->block_index = FELICA_BLOCK_INDEX_RC;
-    } else if(instance->block_index == FELICA_BLOCK_INDEX_MC + 1) {
-        instance->block_index = FELICA_BLOCK_INDEX_WCNT;
-    } else if(instance->block_index == FELICA_BLOCK_INDEX_STATE + 1) {
-        instance->block_index = FELICA_BLOCK_INDEX_CRC_CHECK;
-    }
+    DynamicVector public_block_buffer;
+    dynamic_vector_init(&public_block_buffer, sizeof(FelicaPublicBlock));
 
-    FelicaPollerReadCommandResponse* response;
-    FelicaError error = felica_poller_read_blocks(
-        instance, block_count, block_list, FELICA_SERVICE_RO_ACCESS, &response);
-    if(error == FelicaErrorNone) {
-        block_count = (response->SF1 == 0) ? response->block_count : block_count;
-        uint8_t* data_ptr =
-            instance->data->data.dump + instance->data->blocks_total * sizeof(FelicaBlock);
+    instance->state = FelicaPollerStateReadSuccess;
+    bool have_read_anything = false;
 
-        *data_ptr++ = response->SF1;
-        *data_ptr++ = response->SF2;
+    for(uint32_t i = 0; i < service_count; i++) {
+        FelicaService* service = simple_array_get(instance->data->services, i);
+        bool is_public = (service->attr && FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) == 1;
 
-        if(response->SF1 == 0) {
-            uint8_t* response_data_ptr = response->data;
-            instance->data->blocks_read++;
-            memcpy(data_ptr, response_data_ptr, FELICA_DATA_BLOCK_SIZE);
+        if(!is_public) {
+            continue;
+
         } else {
-            memset(data_ptr, 0, FELICA_DATA_BLOCK_SIZE);
-        }
-        instance->data->blocks_total++;
+            uint8_t block_count = 1;
+            uint8_t block_list[1] = {0};
+            FelicaError error = FelicaErrorNone;
+            FelicaPollerReadCommandResponse* response;
+            do {
+                error = felica_poller_read_blocks(
+                    instance, block_count, block_list, service->code, &response);
 
-        if(instance->data->blocks_total == FELICA_BLOCKS_TOTAL_COUNT) {
-            instance->state = FelicaPollerStateReadSuccess;
+                if(error != FelicaErrorNone) {
+                    break;
+                }
+
+                if(response->SF1 == 0 && response->SF2 == 0) {
+                    FelicaPublicBlock* public_block =
+                        dynamic_vector_push_back(&public_block_buffer);
+                    memcpy(&public_block->block.data, response->data, sizeof(FelicaBlock));
+                    public_block->service_code = service->code;
+                    public_block->block_idx = block_list[0];
+
+                    have_read_anything = true;
+                    block_list[0]++;
+                } else {
+                    break; // No more blocks to read in this service, ok to continue for loop
+                }
+            } while(block_list[0] < FELICA_STANDARD_MAX_BLOCK_COUNT);
+
+            if(error != FelicaErrorNone) {
+                instance->felica_event.type = FelicaPollerEventTypeError;
+                instance->felica_event_data.error = error;
+                instance->state = FelicaPollerStateReadFailed;
+                break;
+            }
         }
-    } else {
-        instance->felica_event.type = FelicaPollerEventTypeError;
-        instance->felica_event_data.error = error;
-        instance->state = FelicaPollerStateReadFailed;
     }
+
+    if(have_read_anything) {
+        simple_array_init(
+            instance->data->public_blocks, dynamic_vector_size(&public_block_buffer));
+        memcpy(
+            simple_array_get(instance->data->public_blocks, 0),
+            public_block_buffer.data,
+            public_block_buffer.count * sizeof(FelicaPublicBlock));
+    }
+
+    dynamic_vector_free(&public_block_buffer);
 
     return NfcCommandContinue;
 }
@@ -434,7 +454,8 @@ static const FelicaPollerReadHandler felica_poller_handler[FelicaPollerStateNum]
     [FelicaPollerStateActivated] = felica_poller_state_handler_activate,
     [FelicaPollerStateAuthenticateInternal] = felica_poller_state_handler_auth_internal,
     [FelicaPollerStateAuthenticateExternal] = felica_poller_state_handler_auth_external,
-    [FelicaPollerStateTraverseStandardSystem] = felica_poller_state_handler_traverse_standard_system,
+    [FelicaPollerStateTraverseStandardSystem] =
+        felica_poller_state_handler_traverse_standard_system,
     [FelicaPollerStateReadStandardBlocks] = felica_poller_state_handler_read_standard_blocks,
     [FelicaPollerStateReadLiteBlocks] = felica_poller_state_handler_read_lite_blocks,
     [FelicaPollerStateReadSuccess] = felica_poller_state_handler_read_success,
