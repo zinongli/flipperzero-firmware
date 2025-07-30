@@ -19,8 +19,9 @@ typedef enum {
     FelicaPollerStateActivated,
     FelicaPollerStateAuthenticateInternal,
     FelicaPollerStateAuthenticateExternal,
-    FelicaPollerStateReadBlocks,
-    FelicaPollerStateTraverseSystem,
+    FelicaPollerStateTraverseStandardSystem,
+    FelicaPollerStateReadStandardBlocks,
+    FelicaPollerStateReadLiteBlocks,
     FelicaPollerStateReadSuccess,
     FelicaPollerStateReadFailed,
 
