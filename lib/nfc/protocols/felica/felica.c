@@ -305,7 +305,7 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
         saved = true;
 
         felica_get_ic_name(data, str_data_buffer);
-        furi_string_replace(str_data_buffer, "\n", " ");
+        furi_string_replace_all(str_data_buffer, "\n", " ");
         if(!flipper_format_write_string(ff, "IC Type", str_data_buffer)) break;
         if(!flipper_format_write_empty_line(ff)) break;
     } while(false);
@@ -402,7 +402,7 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
             furi_string_printf(
                 str_data_buffer, "\n::: ... are public services\n||| ... are private services");
             felica_write_directory_tree(data, str_data_buffer);
-            furi_string_replace(str_data_buffer, ":", "+");
+            furi_string_replace_all(str_data_buffer, ":", "+");
             // We use a clearer marker in saved text files
             if(!flipper_format_write_string(ff, "Directory Tree", str_data_buffer)) break;
         } while(false);
