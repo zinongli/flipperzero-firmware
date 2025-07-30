@@ -583,7 +583,78 @@ void felica_write_directory_tree(const FelicaData* data, FuriString* str) {
     }
 }
 
-void felica_get_ic_type(FelicaData* data, FuriString* ic_name) {
+void felica_get_ic_type(FelicaData* data) {
+    // Reference: Proxmark3 repo
+    uint8_t rom_type = data->pmm.data[0];
+    uint8_t ic_type = data->pmm.data[1];
+    switch(ic_type) {
+    case 0x00:
+    case 0x01:
+    case 0x02:
+    case 0x08:
+    case 0x09:
+    case 0x0B:
+    case 0x0C:
+    case 0x0D:
+    case 0x20:
+    case 0x31:
+    case 0x32:
+    case 0x35:
+    case 0x44:
+    case 0x45:
+    case 0x46:
+        data->ic_type = FelicaStandard;
+        break;
+
+    case 0xF0:
+        data->ic_type = FelicaLite;
+        break;
+    case 0xF1:
+        data->ic_type = FelicaLiteS;
+        break;
+
+    case 0xE1:
+    case 0xF2:
+        data->ic_type = FelicaLink;
+        break;
+    case 0xFF:
+        if(rom_type == 0xFF) {
+            data->ic_type = FelicaLink;
+        }
+        break;
+
+    case 0xE0:
+        data->ic_type = FelicaPlug;
+        break;
+
+    case 0x06:
+    case 0x07:
+    case 0x10:
+    case 0x11:
+    case 0x12:
+    case 0x13:
+    case 0x14:
+    case 0x15:
+    case 0x16:
+    case 0x17:
+    case 0x18:
+    case 0x19:
+    case 0x1A:
+    case 0x1B:
+    case 0x1C:
+    case 0x1D:
+    case 0x1E:
+    case 0x1F:
+        data->ic_type = FelicaMobile;
+        break;
+
+    default:
+        data->ic_type = FelicaUnknown;
+        break;
+    }
+}
+
+void felica_get_ic_name(const FelicaData* data, FuriString* ic_name) {
     // Reference: Proxmark3 repo
     uint8_t rom_type = data->pmm.data[0];
     uint8_t ic_type = data->pmm.data[1];
@@ -591,76 +662,59 @@ void felica_get_ic_type(FelicaData* data, FuriString* ic_name) {
     switch(ic_type) {
     // FeliCa Standard Products:
     case 0x46:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-SA21/2");
         break;
     case 0x45:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-SA20/2");
         break;
     case 0x44:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-SA20/1");
         break;
     case 0x35:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-SA01/2");
         break;
     case 0x32:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-SA00/1");
         break;
     case 0x20:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S962");
         break;
     case 0x0D:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S960");
         break;
     case 0x0C:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S954");
         break;
     case 0x09:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S953");
         break;
     case 0x08:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S952");
         break;
     case 0x01:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S915");
         break;
     // FeliCa Lite Products:
     case 0xF1:
-        data->ic_type = FelicaLiteS;
         furi_string_set_str(ic_name, "FeliCa Lite-S RC-S966");
         break;
     case 0xF0:
-        data->ic_type = FelicaLite;
         furi_string_set_str(ic_name, "FeliCa Lite RC-S965");
         break;
     // FeliCa Link Products:
     case 0xF2:
-        data->ic_type = FelicaLink;
         furi_string_set_str(ic_name, "FeliCa Link RC-S967,\nLite-S Mode or Lite-S HT Mode");
         break;
     case 0xE1:
-        data->ic_type = FelicaLink;
         furi_string_set_str(ic_name, "FeliCa Link RC-S967,\nPlug Mode");
         break;
     case 0xFF:
         if(rom_type == 0xFF) { // from FeliCa Link User's Manual
-            data->ic_type = FelicaLink;
             furi_string_set_str(ic_name, "FeliCa Link RC-S967,\nNFC-DEP Mode");
         }
         break;
     // NFC Dynamic Tag (FeliCa Plug) Products:
     case 0xE0:
-        data->ic_type = FelicaPlug;
         furi_string_set_str(ic_name, "FeliCa Plug RC-S926,\nNFC Dynamic Tag");
         break;
 
@@ -677,38 +731,31 @@ void felica_get_ic_type(FelicaData* data, FuriString* ic_name) {
     case 0x1D:
     case 0x1E:
     case 0x1F:
-        data->ic_type = FelicaMobile;
         furi_string_set_str(ic_name, "FeliCa Mobile IC,\nChip V3.0");
         break;
     case 0x10:
     case 0x11:
     case 0x12:
     case 0x13:
-        data->ic_type = FelicaMobile;
         furi_string_set_str(ic_name, "Mobile FeliCa IC,\nChip V2.0");
         break;
     case 0x06:
     case 0x07:
-        data->ic_type = FelicaMobile;
         furi_string_set_str(ic_name, "Mobile FeliCa IC,\nChip V1.0");
         break;
 
     // odd findings
     case 0x00:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard,\nRC-S830");
         break;
     case 0x02:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard,\nRC-S919");
         break;
     case 0x0B:
     case 0x31:
-        data->ic_type = FelicaStandard;
         furi_string_set_str(ic_name, "FeliCa Standard RC-S,\nJapan Transit IC");
         break;
     default:
-        data->ic_type = FelicaUnknown;
         furi_string_set_str(ic_name, "Unknown IC Type");
         break;
     }

@@ -40,11 +40,9 @@ void nfc_render_felica_info(
     }
 
     FuriString* ic_type_str = furi_string_alloc();
-    FelicaData* data_copy = (FelicaData*)data; // Cast to non-const for function call
-    felica_get_ic_type(data_copy, ic_type_str);
+    felica_get_ic_name(data, ic_type_str);
     furi_string_cat_printf(str, "IC Type:\n%s\n", furi_string_get_cstr(ic_type_str));
     furi_string_free(ic_type_str);
-    felica_free(data_copy);
 
     nfc_render_felica_idm(data, format_type, str);
 

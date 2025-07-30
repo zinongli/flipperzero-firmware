@@ -80,9 +80,7 @@ NfcCommand felica_poller_state_handler_activate(FelicaPoller* instance) {
     FelicaError error = felica_poller_activate(instance, instance->data);
     if(error == FelicaErrorNone) {
         furi_hal_random_fill_buf(instance->data->data.fs.rc.data, FELICA_DATA_BLOCK_SIZE);
-        FuriString* _unused = furi_string_alloc();
-        felica_get_ic_type(instance->data, _unused);
-        furi_string_free(_unused);
+        felica_get_ic_type(instance->data);
 
         instance->felica_event.type = FelicaPollerEventTypeRequestAuthContext;
         instance->felica_event_data.auth_context = &instance->auth.context;
