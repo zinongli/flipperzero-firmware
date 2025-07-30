@@ -13,7 +13,7 @@ void nfc_render_felica_blocks_count(
         }
     } else if(data->ic_type == FelicaStandard) {
         furi_string_cat_printf(
-            str, "\nPublic blocks Read: %lu", simple_array_get_count(data->public_blocks));
+            str, "Public blocks Read: %lu", simple_array_get_count(data->public_blocks));
     }
 }
 
@@ -39,6 +39,11 @@ void nfc_render_felica_info(
         furi_string_cat_printf(str, "Tech: JIS X 6319-4,\nISO 18092 [NFC-F]\n");
     }
 
+    FuriString* ic_type_str = furi_string_alloc();
+    felica_get_ic_name(data, ic_type_str);
+    furi_string_cat_printf(str, "IC Type:\n%s\n", furi_string_get_cstr(ic_type_str));
+    furi_string_free(ic_type_str);
+
     nfc_render_felica_idm(data, format_type, str);
 
     if(format_type == NfcProtocolFormatTypeFull) {
@@ -51,7 +56,7 @@ void nfc_render_felica_info(
     furi_string_cat_printf(str, "\n");
     furi_string_cat_printf(
         str,
-        "Services found: %lu \nAreas found: %lu",
+        "Services found: %lu \nAreas found: %lu\n",
         simple_array_get_count(data->services),
         simple_array_get_count(data->areas));
 
@@ -194,10 +199,7 @@ void nfc_more_info_render_felica_blocks(
             if(public_block->service_code != service_code_key) {
                 continue; // Skip blocks not matching the requested service code
             }
-            furi_string_cat_printf(
-                str,
-                "Block %02X\n",
-                public_block->block_idx);
+            furi_string_cat_printf(str, "Block %02X\n", public_block->block_idx);
             nfc_render_felica_block_data_simple(&public_block->block, str);
             furi_string_cat_printf(str, "\n");
         }

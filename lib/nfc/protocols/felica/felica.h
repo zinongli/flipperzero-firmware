@@ -75,9 +75,7 @@ typedef enum {
     FelicaLite,
     FelicaLiteS,
     FelicaLink,
-    FelicaMobileV1,
-    FelicaMobileV2,
-    FelicaMobileV3,
+    FelicaMobile,
     FelicaPlug,
 } FelicaICType;
 
@@ -316,6 +314,8 @@ void felica_calculate_mac_write(
 void felica_write_directory_tree(const FelicaData* data, FuriString* str);
 
 void felica_get_ic_type(FelicaData* data);
+
+void felica_get_ic_name(const FelicaData* data, FuriString* ic_name);
 
 #ifdef __cplusplus
 }
