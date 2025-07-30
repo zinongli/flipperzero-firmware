@@ -98,7 +98,7 @@ void nfc_render_felica_dump(const FelicaData* data, FuriString* str) {
         furi_string_cat_printf(
             str, "%zu areas found.\n%zu services found.\n\n", area_count, service_count);
         furi_string_cat_printf(
-            str, "::: ... are readable services\n||| ... are locked services\n\n");
+            str, "::: ... are readable services\n||| ... are locked services\n");
     }
     felica_write_directory_tree(data, str);
     furi_string_cat_printf(str, "\n");
