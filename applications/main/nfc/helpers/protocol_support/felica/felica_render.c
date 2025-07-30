@@ -99,29 +99,66 @@ static void nfc_render_felica_block(
     nfc_render_felica_block_data(block, str);
 }
 
-void nfc_render_felica_dump(const FelicaData* data, FuriString* str) {
+void nfc_more_info_render_felica_lite_dump(const FelicaData* data, FuriString* str) {
     FuriString* name = furi_string_alloc();
 
+    furi_string_cat_printf(str, "\e#Blocks read:\n");
+
+    furi_string_cat_printf(str, "Blocks: %u\n", data->blocks_total);
+
+    for(size_t i = 0; i < 14; i++) {
+        furi_string_printf(name, "S_PAD%d", i);
+        uint8_t suf_cnt = 18;
+        if(i == 1) {
+            suf_cnt = 19;
+        } else if((i == 10) || (i == 12) || (i == 13)) {
+            suf_cnt = 16;
+        }
+        nfc_render_felica_block(
+            &data->data.fs.spad[i], str, furi_string_get_cstr(name), 20, suf_cnt);
+    }
+    furi_string_free(name);
+    nfc_render_felica_block(&data->data.fs.reg, str, "REG", 23, 23);
+    nfc_render_felica_block(&data->data.fs.rc, str, "RC", 25, 25);
+    nfc_render_felica_block(&data->data.fs.mac, str, "MAC", 23, 23);
+    nfc_render_felica_block(&data->data.fs.id, str, "ID", 25, 25);
+    nfc_render_felica_block(&data->data.fs.d_id, str, "D_ID", 22, 24);
+    nfc_render_felica_block(&data->data.fs.ser_c, str, "SER_C", 20, 21);
+    nfc_render_felica_block(&data->data.fs.sys_c, str, "SYS_C", 20, 21);
+    nfc_render_felica_block(&data->data.fs.ckv, str, "CKV", 23, 23);
+    nfc_render_felica_block(&data->data.fs.ck, str, "CK", 25, 25);
+    nfc_render_felica_block(&data->data.fs.mc, str, "MC", 25, 24);
+    nfc_render_felica_block(&data->data.fs.wcnt, str, "WCNT", 22, 20);
+    nfc_render_felica_block(&data->data.fs.mac_a, str, "MAC_A", 20, 20);
+    nfc_render_felica_block(&data->data.fs.state, str, "STATE", 20, 21);
+    nfc_render_felica_block(&data->data.fs.crc_check, str, "CRC_CHCK", 15, 17);
+}
+
+void nfc_more_info_render_felica_dir(const FelicaData* data, FuriString* str) {
     const size_t area_count = simple_array_get_count(data->areas);
     const size_t service_count = simple_array_get_count(data->services);
 
-    // furi_string_cat_printf(str, "\e#Directory Tree:\n");
+    furi_string_cat_printf(str, "\e#Directory Tree:\n");
 
     if(area_count == 0 || service_count == 0) {
         furi_string_cat_printf(str, "No services or areas found.\n");
     } else {
         furi_string_cat_printf(
             str, "%zu areas found.\n%zu services found.\n\n", area_count, service_count);
-        // furi_string_cat_printf(
-        //     str, "::: ... are readable services\n||| ... are locked services\n");
+        furi_string_cat_printf(
+            str, "::: ... are readable services\n||| ... are locked services\n");
     }
-    // felica_write_directory_tree(data, str);
-    // furi_string_cat_printf(str, "\n");
+    felica_write_directory_tree(data, str);
+}
 
-    furi_string_cat_printf(str, "\e#Blocks read:\n");
-
+void nfc_more_info_render_felica_blocks(
+    const FelicaData* data,
+    FuriString* str,
+    const uint16_t service_code_key) {
+    furi_string_cat_printf(str, "\n");
     if(data->ic_type == FelicaLite || data->ic_type == FelicaLiteS) {
         furi_string_cat_printf(str, "Blocks: %u\n", data->blocks_total);
+        FuriString* name = furi_string_alloc();
 
         for(size_t i = 0; i < 14; i++) {
             furi_string_printf(name, "S_PAD%d", i);
@@ -151,19 +188,18 @@ void nfc_render_felica_dump(const FelicaData* data, FuriString* str) {
         nfc_render_felica_block(&data->data.fs.crc_check, str, "CRC_CHCK", 15, 17);
 
     } else if(data->ic_type == FelicaStandard) {
-        uint32_t public_blocks_count =
-            simple_array_get_count(data->public_blocks);
-        for (size_t i = 0; i < public_blocks_count; i++) {
-            FelicaPublicBlock* public_block =
-                simple_array_get(data->public_blocks, i);
+        uint32_t public_blocks_count = simple_array_get_count(data->public_blocks);
+        for(size_t i = 0; i < public_blocks_count; i++) {
+            FelicaPublicBlock* public_block = simple_array_get(data->public_blocks, i);
+            if(public_block->service_code != service_code_key) {
+                continue; // Skip blocks not matching the requested service code
+            }
             furi_string_cat_printf(
                 str,
-                "Service %04X Block %02X\n",
-                public_block->service_code,
+                "Block %02X\n",
                 public_block->block_idx);
-            nfc_render_felica_block_data_simple(
-                &public_block->block,
-                str);
+            nfc_render_felica_block_data_simple(&public_block->block, str);
+            furi_string_cat_printf(str, "\n");
         }
     }
 }
