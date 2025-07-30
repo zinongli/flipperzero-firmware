@@ -43,9 +43,10 @@ FelicaData* felica_alloc(void) {
 
     data->services = simple_array_alloc(&felica_service_array_cfg);
     data->areas = simple_array_alloc(&felica_area_array_cfg);
+    data->public_blocks = simple_array_alloc(&felica_public_block_array_cfg);
     furi_check(data->services);
     furi_check(data->areas);
-
+    furi_check(data->public_blocks);
     return data;
 }
 
@@ -57,6 +58,9 @@ void felica_free(FelicaData* data) {
 
     furi_check(data->areas);
     simple_array_free(data->areas);
+
+    furi_check(data->public_blocks);
+    simple_array_free(data->public_blocks);
 
     free(data);
 }
@@ -72,8 +76,13 @@ void felica_reset(FelicaData* data) {
         simple_array_reset(data->areas);
     }
 
+    if(data->public_blocks) {
+        simple_array_reset(data->public_blocks);
+    }
+
     data->blocks_read = 0;
     data->blocks_total = 0;
+    data->ic_type = FelicaUnknown;
     memset(&data->idm, 0, sizeof(data->idm));
     memset(&data->pmm, 0, sizeof(data->pmm));
     memset(&data->data, 0, sizeof(data->data));
@@ -90,9 +99,11 @@ void felica_copy(FelicaData* data, const FelicaData* other) {
     data->blocks_total = other->blocks_total;
     data->blocks_read = other->blocks_read;
     data->data = other->data;
+    data->ic_type = other->ic_type;
 
     simple_array_copy(data->services, other->services);
     simple_array_copy(data->areas, other->areas);
+    simple_array_copy(data->public_blocks, other->public_blocks);
 }
 
 bool felica_verify(FelicaData* data, const FuriString* device_type) {
@@ -330,7 +341,8 @@ bool felica_is_equal(const FelicaData* data, const FelicaData* other) {
            data->blocks_total == other->blocks_total && data->blocks_read == other->blocks_read &&
            memcmp(&data->data, &other->data, sizeof(data->data)) == 0 &&
            simple_array_is_equal(data->services, other->services) &&
-           simple_array_is_equal(data->areas, other->areas);
+           simple_array_is_equal(data->areas, other->areas) &&
+           simple_array_is_equal(data->public_blocks, other->public_blocks);
 }
 
 const char* felica_get_device_name(const FelicaData* data, NfcDeviceNameType name_type) {
@@ -568,5 +580,80 @@ void felica_write_directory_tree(const FelicaData* data, FuriString* str) {
         furi_string_cat_printf(str, "- serv_%04X\n", service->code);
 
         if(depth && svc_idx >= area_last_stack[depth - 1]) depth--;
+    }
+}
+
+void felica_get_ic_type(FelicaData* data) {
+    // Reference: Proxmark3 repo
+    uint8_t rom_type = data->pmm.data[0];
+    uint8_t ic_type = data->pmm.data[1];
+    switch(ic_type) {
+    case 0x00:
+    case 0x01:
+    case 0x02:
+    case 0x08:
+    case 0x09:
+    case 0x0B:
+    case 0x0C:
+    case 0x0D:
+    case 0x20:
+    case 0x31:
+    case 0x32:
+    case 0x35:
+    case 0x44:
+    case 0x45:
+    case 0x46:
+        data->ic_type = FelicaStandard;
+        break;
+
+    case 0xF0:
+        data->ic_type = FelicaLite;
+        break;
+    case 0xF1:
+        data->ic_type = FelicaLiteS;
+        break;
+
+    case 0xE1:    
+    case 0xF2:
+        data->ic_type = FelicaLink;
+        break;
+    case 0xFF:
+        if(rom_type == 0xFF) {
+            data->ic_type = FelicaLink;
+        }
+        break;
+
+    case 0xE0:
+        data->ic_type = FelicaPlug;
+        break;
+
+    case 0x06:
+    case 0x07:
+        data->ic_type = FelicaMobileV1;
+        break;
+    case 0x10:
+    case 0x11:
+    case 0x12:
+    case 0x13:
+        data->ic_type = FelicaMobileV2;
+        break;
+    case 0x14:
+    case 0x15:
+    case 0x16:
+    case 0x17:
+    case 0x18:
+    case 0x19:
+    case 0x1A:
+    case 0x1B:
+    case 0x1C:
+    case 0x1D:
+    case 0x1E:
+    case 0x1F:
+        data->ic_type = FelicaMobileV3;
+        break;
+
+    default:
+        data->ic_type = FelicaUnknown;
+        break;
     }
 }

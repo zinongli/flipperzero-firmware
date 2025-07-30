@@ -67,6 +67,18 @@ typedef enum {
     FelicaErrorTimeout,
 } FelicaError;
 
+typedef enum {
+    FelicaUnknown,
+    FelicaStandard,
+    FelicaLite,
+    FelicaLiteS,
+    FelicaLink,
+    FelicaMobileV1,
+    FelicaMobileV2,
+    FelicaMobileV3,
+    FelicaPlug,
+} FelicaICType;
+
 typedef struct {
     uint8_t data[FELICA_DATA_BLOCK_SIZE];
 } FelicaBlockData;
@@ -164,6 +176,12 @@ typedef struct {
     uint16_t last_idx;
 } FelicaArea;
 
+typedef struct {
+    FelicaBlock block;
+    uint16_t service_code;
+    uint8_t block_idx;
+} FelicaPublicBlock;
+
 /** @brief Structure used to store Felica data and additional values about reading */
 typedef struct {
     FelicaIDm idm;
@@ -174,6 +192,8 @@ typedef struct {
 
     SimpleArray* services;
     SimpleArray* areas;
+    SimpleArray* public_blocks;
+    FelicaICType ic_type;
 } FelicaData;
 
 #pragma pack(push, 1)
@@ -292,6 +312,8 @@ void felica_calculate_mac_write(
     uint8_t* mac);
 
 void felica_write_directory_tree(const FelicaData* data, FuriString* str);
+
+void felica_get_ic_type(FelicaData* data);
 
 #ifdef __cplusplus
 }

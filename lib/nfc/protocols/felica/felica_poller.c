@@ -80,15 +80,31 @@ NfcCommand felica_poller_state_handler_activate(FelicaPoller* instance) {
     FelicaError error = felica_poller_activate(instance, instance->data);
     if(error == FelicaErrorNone) {
         furi_hal_random_fill_buf(instance->data->data.fs.rc.data, FELICA_DATA_BLOCK_SIZE);
+        felica_get_ic_type(instance->data);
 
         instance->felica_event.type = FelicaPollerEventTypeRequestAuthContext;
         instance->felica_event_data.auth_context = &instance->auth.context;
 
         instance->callback(instance->general_event, instance->context);
 
+        switch(instance->data->ic_type) {
+        case FelicaStandard:
+            instance->state = FelicaPollerStateTraverseStandardSystem;
+            break;
+        case FelicaLite:
+        case FelicaLiteS:
+            instance->state = FelicaPollerStateReadLiteBlocks;
+            break;
+        default:
+            // Unimplemented
+            instance->state = FelicaPollerStateReadSuccess;
+            break;
+        }
+
         bool skip_auth = instance->auth.context.skip_auth;
-        instance->state = skip_auth ? FelicaPollerStateTraverseSystem :
-                                      FelicaPollerStateAuthenticateInternal;
+        if(skip_auth) {
+            instance->state = FelicaPollerStateAuthenticateInternal;
+        };
     } else if(error != FelicaErrorTimeout) {
         instance->felica_event.type = FelicaPollerEventTypeError;
         instance->felica_event_data.error = error;
@@ -106,7 +122,19 @@ NfcCommand felica_poller_state_handler_auth_internal(FelicaPoller* instance) {
         instance->data->data.fs.rc.data,
         instance->auth.session_key.data);
 
-    instance->state = FelicaPollerStateTraverseSystem;
+    switch(instance->data->ic_type) {
+    case FelicaStandard:
+        instance->state = FelicaPollerStateTraverseStandardSystem;
+        break;
+    case FelicaLite:
+    case FelicaLiteS:
+        instance->state = FelicaPollerStateReadLiteBlocks;
+        break;
+    default:
+        // Unimplemented
+        instance->state = FelicaPollerStateReadSuccess;
+        break;
+    }
 
     uint8_t blocks[3] = {FELICA_BLOCK_INDEX_RC, 0, 0};
     FelicaPollerWriteCommandResponse* tx_resp;
@@ -183,12 +211,26 @@ NfcCommand felica_poller_state_handler_auth_external(FelicaPoller* instance) {
         memcpy(instance->data->data.fs.state.data, rx_resp->data, FELICA_DATA_BLOCK_SIZE);
         instance->auth.context.auth_status.external = instance->data->data.fs.state.data[0];
     } while(false);
-    instance->state = FelicaPollerStateTraverseSystem;
+
+    switch(instance->data->ic_type) {
+    case FelicaStandard:
+        instance->state = FelicaPollerStateTraverseStandardSystem;
+        break;
+    case FelicaLite:
+    case FelicaLiteS:
+        instance->state = FelicaPollerStateReadLiteBlocks;
+        break;
+    default:
+        // Unimplemented
+        instance->state = FelicaPollerStateReadSuccess;
+        break;
+    }
+
     return NfcCommandContinue;
 }
 
-NfcCommand felica_poller_state_handler_traverse_system(FelicaPoller* instance) {
-    FURI_LOG_D(TAG, "Traverse System");
+NfcCommand felica_poller_state_handler_traverse_standard_system(FelicaPoller* instance) {
+    FURI_LOG_D(TAG, "Traverse Standard System");
 
     FelicaListServiceCommandResponse* response;
 
@@ -261,12 +303,60 @@ NfcCommand felica_poller_state_handler_traverse_system(FelicaPoller* instance) {
     dynamic_vector_free(&service_buffer);
     dynamic_vector_free(&area_buffer);
 
-    instance->state = FelicaPollerStateReadBlocks;
+    instance->state = FelicaPollerStateReadStandardBlocks;
     return NfcCommandContinue;
 }
 
-NfcCommand felica_poller_state_handler_read_blocks(FelicaPoller* instance) {
-    FURI_LOG_D(TAG, "Read Blocks");
+NfcCommand felica_poller_state_handler_read_standard_blocks(FelicaPoller* instance) {
+    FURI_LOG_D(TAG, "Read Standard Blocks");
+
+    uint8_t block_count = 1;
+    uint8_t block_list[4] = {0, 0, 0, 0};
+    block_list[0] = instance->block_index;
+
+    instance->block_index++;
+    if(instance->block_index == FELICA_BLOCK_INDEX_REG + 1) {
+        instance->block_index = FELICA_BLOCK_INDEX_RC;
+    } else if(instance->block_index == FELICA_BLOCK_INDEX_MC + 1) {
+        instance->block_index = FELICA_BLOCK_INDEX_WCNT;
+    } else if(instance->block_index == FELICA_BLOCK_INDEX_STATE + 1) {
+        instance->block_index = FELICA_BLOCK_INDEX_CRC_CHECK;
+    }
+
+    FelicaPollerReadCommandResponse* response;
+    FelicaError error = felica_poller_read_blocks(
+        instance, block_count, block_list, FELICA_SERVICE_RO_ACCESS, &response);
+    if(error == FelicaErrorNone) {
+        block_count = (response->SF1 == 0) ? response->block_count : block_count;
+        uint8_t* data_ptr =
+            instance->data->data.dump + instance->data->blocks_total * sizeof(FelicaBlock);
+
+        *data_ptr++ = response->SF1;
+        *data_ptr++ = response->SF2;
+
+        if(response->SF1 == 0) {
+            uint8_t* response_data_ptr = response->data;
+            instance->data->blocks_read++;
+            memcpy(data_ptr, response_data_ptr, FELICA_DATA_BLOCK_SIZE);
+        } else {
+            memset(data_ptr, 0, FELICA_DATA_BLOCK_SIZE);
+        }
+        instance->data->blocks_total++;
+
+        if(instance->data->blocks_total == FELICA_BLOCKS_TOTAL_COUNT) {
+            instance->state = FelicaPollerStateReadSuccess;
+        }
+    } else {
+        instance->felica_event.type = FelicaPollerEventTypeError;
+        instance->felica_event_data.error = error;
+        instance->state = FelicaPollerStateReadFailed;
+    }
+
+    return NfcCommandContinue;
+}
+
+NfcCommand felica_poller_state_handler_read_lite_blocks(FelicaPoller* instance) {
+    FURI_LOG_D(TAG, "Read Lite Blocks");
 
     uint8_t block_count = 1;
     uint8_t block_list[4] = {0, 0, 0, 0};
@@ -344,8 +434,9 @@ static const FelicaPollerReadHandler felica_poller_handler[FelicaPollerStateNum]
     [FelicaPollerStateActivated] = felica_poller_state_handler_activate,
     [FelicaPollerStateAuthenticateInternal] = felica_poller_state_handler_auth_internal,
     [FelicaPollerStateAuthenticateExternal] = felica_poller_state_handler_auth_external,
-    [FelicaPollerStateTraverseSystem] = felica_poller_state_handler_traverse_system,
-    [FelicaPollerStateReadBlocks] = felica_poller_state_handler_read_blocks,
+    [FelicaPollerStateTraverseStandardSystem] = felica_poller_state_handler_traverse_standard_system,
+    [FelicaPollerStateReadStandardBlocks] = felica_poller_state_handler_read_standard_blocks,
+    [FelicaPollerStateReadLiteBlocks] = felica_poller_state_handler_read_lite_blocks,
     [FelicaPollerStateReadSuccess] = felica_poller_state_handler_read_success,
     [FelicaPollerStateReadFailed] = felica_poller_state_handler_read_failed,
 };
