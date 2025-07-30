@@ -242,7 +242,7 @@ NfcCommand felica_poller_state_handler_traverse_standard_system(FelicaPoller* in
     for(uint16_t cursor = 0; cursor < 0xFFFF; cursor++) {
         FelicaError error = felica_poller_list_service_by_cursor(instance, cursor, &response);
         if(error != FelicaErrorNone) {
-            FURI_LOG_E(TAG, "ERR %d @ cursor %04X", error, cursor);
+            FURI_LOG_E(TAG, "Error %d at cursor %04X", error, cursor);
             break;
         }
 
@@ -251,7 +251,7 @@ NfcCommand felica_poller_state_handler_traverse_standard_system(FelicaPoller* in
         uint16_t code_begin = list_service_payload[0] | (list_service_payload[1] << 8);
 
         if(len != 0x0C && len != 0x0E) {
-            FURI_LOG_E(TAG, "Bad command resp length 0x%02X @ cursor %04X", len, cursor);
+            FURI_LOG_E(TAG, "Bad command resp length 0x%02X at cursor 0x%04X", len, cursor);
             break;
         }
 
@@ -319,7 +319,7 @@ NfcCommand felica_poller_state_handler_read_standard_blocks(FelicaPoller* instan
 
     for(uint32_t i = 0; i < service_count; i++) {
         FelicaService* service = simple_array_get(instance->data->services, i);
-        bool is_public = (service->attr && FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
+        bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
 
         if(!is_public) {
             continue;

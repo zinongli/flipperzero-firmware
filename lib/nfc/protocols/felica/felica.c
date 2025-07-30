@@ -251,12 +251,12 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
                     break;
                 }
 
-                furi_string_right(str_data_buffer, 45);
+                size_t needle = furi_string_search_str(str_data_buffer, "Data: ");
+                if(needle == FURI_STRING_FAILURE) {
+                    break;
+                }
+                furi_string_right(str_data_buffer, needle + 6); // length of "Data: " = 6
                 furi_string_left(str_data_buffer, 3 * FELICA_DATA_BLOCK_SIZE);
-
-                FURI_LOG_D(
-                    "FelicaLoad", "Loaded buffer %s", furi_string_get_cstr(str_data_buffer));
-
                 furi_string_replace_all(str_data_buffer, " ", "");
                 if(!hex_chars_to_uint8(
                        furi_string_get_cstr(str_data_buffer), public_block->block.data)) {
@@ -267,9 +267,6 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
                 for(size_t j = 0; j < FELICA_DATA_BLOCK_SIZE; j++) {
                     furi_string_cat_printf(str_data_buffer, "%02X ", public_block->block.data[j]);
                 }
-
-                FURI_LOG_D(
-                    "FelicaLoad", "Reconstructed %s", furi_string_get_cstr(str_data_buffer));
             }
         } while(false);
         break;
