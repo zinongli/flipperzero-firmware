@@ -320,7 +320,7 @@ NfcCommand felica_poller_state_handler_read_standard_blocks(FelicaPoller* instan
 
     for(uint32_t i = 0; i < service_count; i++) {
         FelicaService* service = simple_array_get(instance->data->services, i);
-        bool is_public = (service->attr && FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) == 1;
+        bool is_public = (service->attr && FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
 
         if(!is_public) {
             continue;
