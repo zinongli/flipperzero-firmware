@@ -376,15 +376,9 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
             for(uint16_t i = 0; i < service_count; i++) {
                 FelicaService* service = simple_array_get(data->services, i);
                 furi_string_printf(str_key_buffer, "Service %03X", i);
-                bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
-                bool is_read_only = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
                 furi_string_printf(
-                    str_data_buffer,
-                    "| Code %04X | Attrib. %02X %s%s",
-                    service->code,
-                    service->attr,
-                    is_public ? "| Public  " : "| Private ",
-                    is_read_only ? "| Read-only |" : "| Writable  |");
+                    str_data_buffer, "| Code %04X | Attrib. %02X ", service->code, service->attr);
+                felica_service_get_attribute_string(service, str_data_buffer);
                 if(!flipper_format_write_string(
                        ff, furi_string_get_cstr(str_key_buffer), str_data_buffer))
                     break;
@@ -866,5 +860,42 @@ void felica_get_ic_name(const FelicaData* data, FuriString* ic_name) {
     default:
         furi_string_set_str(ic_name, "Unknown IC Type");
         break;
+    }
+}
+
+void felica_service_get_attribute_string(const FelicaService* service, FuriString* str) {
+    furi_check(service);
+    furi_check(str);
+
+    bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
+    furi_string_cat_printf(str, "%s", is_public ? "| Public  " : "| Private ");
+
+    bool is_purse = (service->attr & FELICA_SERVICE_ATTRIBUTE_PURSE) != 0;
+    // Subfield bitwise attributes are applicable depending on is PURSE or not
+
+    if(is_purse) {
+        furi_string_cat_printf(str, "| Purse  |");
+        switch(service->attr & FELICA_SERVICE_ATTRIBUTE_PURSE_SUBFIELD) {
+        case 0:
+            furi_string_cat_printf(str, " Direct     |");
+            break;
+        case 1:
+            furi_string_cat_printf(str, " Cashback   |");
+            break;
+        case 2:
+            furi_string_cat_printf(str, " Decrement  |");
+            break;
+        case 3:
+            furi_string_cat_printf(str, " Read Only  |");
+            break;
+        default:
+            furi_string_cat_printf(str, " Unknown    |");
+            break;
+        }
+    } else {
+        bool is_random = (service->attr & FELICA_SERVICE_ATTRIBUTE_RANDOM_ACCESS) != 0;
+        furi_string_cat_printf(str, "%s", is_random ? "| Random |" : "| Cyclic |");
+        bool is_readonly = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
+        furi_string_cat_printf(str, "%s", is_readonly ? " Read Only  |" : " Read/Write |");
     }
 }

@@ -53,8 +53,12 @@ extern "C" {
 #define FELICA_CMD_LIST_SERVICE_CODE      0x0A
 #define FELICA_CMD_LIST_SERVICE_CODE_RESP 0x0B
 
-#define FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ (0b000001)
-#define FELICA_SERVICE_ATTRIBUTE_READ_ONLY   (0b000010)
+#define FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ    (0b000001)
+#define FELICA_SERVICE_ATTRIBUTE_READ_ONLY      (0b000010)
+#define FELICA_SERVICE_ATTRIBUTE_RANDOM_ACCESS  (0b001000)
+#define FELICA_SERVICE_ATTRIBUTE_CYCLIC         (0b001100)
+#define FELICA_SERVICE_ATTRIBUTE_PURSE          (0b010000)
+#define FELICA_SERVICE_ATTRIBUTE_PURSE_SUBFIELD (0b000110)
 
 /** @brief Type of possible Felica errors */
 typedef enum {
@@ -315,6 +319,8 @@ void felica_write_directory_tree(const FelicaData* data, FuriString* str);
 void felica_get_ic_type(FelicaData* data);
 
 void felica_get_ic_name(const FelicaData* data, FuriString* ic_name);
+
+void felica_service_get_attribute_string(const FelicaService* service, FuriString* str);
 
 #ifdef __cplusplus
 }

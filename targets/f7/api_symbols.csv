@@ -1070,6 +1070,7 @@ Function,+,felica_poller_read_blocks,FelicaError,"FelicaPoller*, const uint8_t, 
 Function,+,felica_poller_sync_read,FelicaError,"Nfc*, FelicaData*, const FelicaCardKey*"
 Function,+,felica_reset,void,FelicaData*
 Function,+,felica_save,_Bool,"const FelicaData*, FlipperFormat*"
+Function,+,felica_service_get_attribute_string,void,"const FelicaService*, FuriString*"
 Function,+,felica_set_uid,_Bool,"FelicaData*, const uint8_t*, size_t"
 Function,+,felica_verify,_Bool,"FelicaData*, const FuriString*"
 Function,+,felica_write_directory_tree,void,"const FelicaData*, FuriString*"
