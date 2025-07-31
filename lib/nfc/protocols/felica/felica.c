@@ -706,6 +706,7 @@ void felica_get_ic_type(FelicaData* data) {
     case 0x31:
     case 0x32:
     case 0x35:
+    case 0x36:
     case 0x44:
     case 0x45:
     case 0x46:
@@ -860,6 +861,9 @@ void felica_get_ic_name(const FelicaData* data, FuriString* ic_name) {
     case 0x0B:
     case 0x31:
         furi_string_set_str(ic_name, "FeliCa Standard RC-S,\nJapan Transit IC");
+        break;
+    case 0x36:
+        furi_string_set_str(ic_name, "FeliCa Standard RC-S,\nJapan Transit IC (Ayuca)");
         break;
     default:
         furi_string_set_str(ic_name, "Unknown IC Type");
