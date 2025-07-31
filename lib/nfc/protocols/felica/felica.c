@@ -875,7 +875,7 @@ void felica_service_get_attribute_string(const FelicaService* service, FuriStrin
 
     if(is_purse) {
         furi_string_cat_printf(str, "| Purse  |");
-        switch(service->attr & FELICA_SERVICE_ATTRIBUTE_PURSE_SUBFIELD) {
+        switch((service->attr & FELICA_SERVICE_ATTRIBUTE_PURSE_SUBFIELD) >> 1) {
         case 0:
             furi_string_cat_printf(str, " Direct     |");
             break;
