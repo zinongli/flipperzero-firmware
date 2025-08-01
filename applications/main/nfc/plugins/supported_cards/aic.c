@@ -11,51 +11,50 @@
 bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
     furi_assert(device);
     furi_assert(parsed_data);
-
-    const FelicaData* data = nfc_device_get_data(device, NfcProtocolFelica);
     bool parsed = false;
 
+    if(nfc_device_get_protocol(device) != NfcProtocolFelica) return false;
+
+    const FelicaData* data = nfc_device_get_data(device, NfcProtocolFelica);
+
+    const uint8_t ic_type = data->pmm.data[1];
+    if(ic_type != 0xF0 && ic_type != 0xF1) {
+        // Must be Felica Lite (0xF0) or Lite-S (0xF1) to parse
+        return false;
+    }
+
+    const uint8_t data_format_code_1 = data->data.fs.id.data[10];
+    if(data_format_code_1 != 0) {
+        // We only know Data Format Code {0x00, 0xXX}
+        return false;
+    }
+
     do {
-        const uint8_t ic_type = data->pmm.data[1];
-        if(ic_type != 0xF0 && ic_type != 0xF1) {
-            // Not Felica Lite (0xF0) or Lite-S (0xF1)
-            break;
-        }
-
-        const uint8_t data_format_code_1 = data->data.fs.id.data[10];
-        if(data_format_code_1 != 0) {
-            // We only know Data Format Code {0x00, 0xXX}
-            break;
-        }
-        const uint8_t data_format_code_2 = data->data.fs.id.data[11];
         parsed = true;
+        furi_string_printf(parsed_data, "\e#Amusement IC Card\nType:\n");
 
-        FuriString* vendor = furi_string_alloc();
+        const uint8_t data_format_code_2 = data->data.fs.id.data[11];
+
         switch(data_format_code_2) {
         case 0x2A:
-            furi_string_set(vendor, "Bandai Namco Passport (Old)");
+            furi_string_cat_str(parsed_data, "Bandai Namco Passport (Old)");
             break;
         case 0x3A:
-            furi_string_set(vendor, "Bandai Namco Passport (New)");
+            furi_string_cat_str(parsed_data, "Bandai Namco Passport (New)");
             break;
         case 0x68:
-            furi_string_set(vendor, "Konami E-Amusement Pass");
+            furi_string_cat_str(parsed_data, "Konami e-Amusement Pass");
             break;
         case 0x78:
-            furi_string_set(vendor, "SEGA Aime Card");
+            furi_string_cat_str(parsed_data, "SEGA Aime Card");
             break;
         case 0x79:
-            furi_string_set(vendor, "Taito NESiCA");
+            furi_string_cat_str(parsed_data, "Taito NESiCA");
             break;
         default:
             parsed = false;
-            break;
+            return parsed; // Unknown vendor
         }
-
-        furi_string_printf(parsed_data, "\e#Amusement IC Card\n\n");
-        furi_string_cat_printf(parsed_data, "Type:\n%s\n", furi_string_get_cstr(vendor));
-
-        furi_string_free(vendor);
 
     } while(false);
     return parsed;
@@ -63,7 +62,7 @@ bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
 
 /* Actual implementation of app<>plugin interface */
 static const NfcSupportedCardsPlugin aic_plugin = {
-    .protocol = NfcProtocolMfClassic,
+    .protocol = NfcProtocolFelica,
     .verify = NULL,
     .read = NULL,
     .parse = aic_parse,
