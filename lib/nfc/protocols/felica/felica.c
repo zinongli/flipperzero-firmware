@@ -331,8 +331,7 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
                     break;
                 }
 
-                if(!flipper_format_write_empty_line(ff)) break;
-            }
+            }                
         } while(false);
         break;
 
