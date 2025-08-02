@@ -1,3 +1,5 @@
+// https://sega.bsnk.me/allnet/amusement_ic/
+
 #include "nfc_supported_card_plugin.h"
 #include <flipper_application.h>
 #include <nfc/protocols/felica/felica.h>
