@@ -255,8 +255,8 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
                 if(needle == FURI_STRING_FAILURE) {
                     break;
                 }
-                furi_string_right(str_data_buffer, needle + 6); // length of "Data: " = 6
-                furi_string_left(str_data_buffer, 3 * FELICA_DATA_BLOCK_SIZE);
+                needle += 6; // length of "Data: " = 6
+                furi_string_mid(str_data_buffer, needle, 3 * FELICA_DATA_BLOCK_SIZE);
                 furi_string_replace_all(str_data_buffer, " ", "");
                 if(!hex_chars_to_uint8(
                        furi_string_get_cstr(str_data_buffer), public_block->block.data)) {
@@ -330,8 +330,7 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
                     saved = false;
                     break;
                 }
-
-            }                
+            }
         } while(false);
         break;
 
