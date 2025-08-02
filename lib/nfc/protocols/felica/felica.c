@@ -866,34 +866,34 @@ void felica_service_get_attribute_string(const FelicaService* service, FuriStrin
     furi_check(str);
 
     bool is_public = (service->attr & FELICA_SERVICE_ATTRIBUTE_UNAUTH_READ) != 0;
-    furi_string_cat_printf(str, "%s", is_public ? "| Public  " : "| Private ");
+    furi_string_cat_str(str, is_public ? "| Public  " : "| Private ");
 
     bool is_purse = (service->attr & FELICA_SERVICE_ATTRIBUTE_PURSE) != 0;
     // Subfield bitwise attributes are applicable depending on is PURSE or not
 
     if(is_purse) {
-        furi_string_cat_printf(str, "| Purse  |");
+        furi_string_cat_str(str, "| Purse  |");
         switch((service->attr & FELICA_SERVICE_ATTRIBUTE_PURSE_SUBFIELD) >> 1) {
         case 0:
-            furi_string_cat_printf(str, " Direct     |");
+            furi_string_cat_str(str, " Direct     |");
             break;
         case 1:
-            furi_string_cat_printf(str, " Cashback   |");
+            furi_string_cat_str(str, " Cashback   |");
             break;
         case 2:
-            furi_string_cat_printf(str, " Decrement  |");
+            furi_string_cat_str(str, " Decrement  |");
             break;
         case 3:
-            furi_string_cat_printf(str, " Read Only  |");
+            furi_string_cat_str(str, " Read Only  |");
             break;
         default:
-            furi_string_cat_printf(str, " Unknown    |");
+            furi_string_cat_str(str, " Unknown    |");
             break;
         }
     } else {
         bool is_random = (service->attr & FELICA_SERVICE_ATTRIBUTE_RANDOM_ACCESS) != 0;
-        furi_string_cat_printf(str, "%s", is_random ? "| Random |" : "| Cyclic |");
+        furi_string_cat_str(str, is_random ? "| Random |" : "| Cyclic |");
         bool is_readonly = (service->attr & FELICA_SERVICE_ATTRIBUTE_READ_ONLY) != 0;
-        furi_string_cat_printf(str, "%s", is_readonly ? " Read Only  |" : " Read/Write |");
+        furi_string_cat_str(str, is_readonly ? " Read Only  |" : " Read/Write |");
     }
 }
