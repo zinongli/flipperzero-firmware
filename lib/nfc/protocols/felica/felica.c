@@ -710,11 +710,11 @@ void felica_get_ic_type(FelicaData* data) {
         data->ic_type = FelicaLite;
         break;
     case 0xF1:
+    case 0xF2: // 0xF2 => FeliCa Link RC-S967 in Lite-S Mode or Lite-S HT Mode
         data->ic_type = FelicaLiteS;
         break;
 
     case 0xE1:
-    case 0xF2:
         data->ic_type = FelicaLink;
         break;
     case 0xFF:
