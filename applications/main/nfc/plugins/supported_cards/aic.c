@@ -520,7 +520,7 @@ static void parse_access_code(const uint8_t* access_code, FuriString* parsed_dat
         decrypted[n] = access_code_table_1[4][boxes1[n]][decrypted[n]];
     }
 
-    int rv = decrypted[0] >> 4;
+    int rv = decrypted[0] / 10;
 
     int boxes2[6] = {
         (crc[1] + crc[0]) % 10, crc[1], crc[2], crc[3], crc[4], (crc[4] + crc[1]) % 10};
