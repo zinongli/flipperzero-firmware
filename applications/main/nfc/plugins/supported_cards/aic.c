@@ -631,7 +631,8 @@ bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
         furi_string_cat_str(parsed_data, "\n");
         parse_access_code(access_code, parsed_data);
     } else {
-        furi_string_cat_printf(parsed_data, "\nAccess code preamble wrong: expected 5, got %d\n", access_code[0]);
+        furi_string_cat_printf(
+            parsed_data, "\nAccess code preamble wrong: expected 5, got %d\n", access_code[0]);
     }
 
     furi_string_cat_str(
