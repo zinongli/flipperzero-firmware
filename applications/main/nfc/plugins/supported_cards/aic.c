@@ -178,21 +178,6 @@ static const uint8_t s_box[9][256] = {
      0xb8},
 };
 
-// static const uint8_t aime_key[12][16] = {
-//     {0xB,0x3,0xE,0x8,0xC,0xF,0xA,0x7,0xD,0x2,0x1,0x4,0x9,0x5,0x6,0x0},
-//     {0x8,0x9,0xF,0x5,0x6,0xC,0xD,0x1,0xB,0x3,0xE,0xA,0x7,0x4,0x0,0x2},
-//     {0x4,0x7,0x1,0xB,0x3,0xE,0x8,0x6,0x2,0x9,0xD,0x0,0xC,0xA,0x5,0xF},
-//     {0x5,0xC,0x9,0xA,0xB,0x3,0xE,0x8,0x1,0x6,0xD,0xF,0x4,0x0,0x2,0x7},
-//     {0xC,0x4,0xE,0x8,0x1,0xB,0x3,0xA,0x5,0x9,0x2,0x0,0xF,0x6,0x7,0xD},
-//     {0xE,0x5,0xF,0xA,0x6,0x0,0x2,0x8,0x1,0xB,0x3,0xD,0x4,0x7,0x9,0xC},
-//     {0x5,0xC,0xD,0x3,0xE,0x8,0x1,0xB,0x9,0x0,0x2,0x4,0xF,0x6,0x7,0xA},
-//     {0xA,0x1,0xB,0x3,0xE,0x8,0x6,0xC,0xF,0x0,0x2,0x9,0x7,0x4,0xD,0x5},
-//     {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0},
-//     {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0},
-//     {0x8,0x1,0x7,0xF,0xA,0x5,0x6,0xC,0xB,0x3,0xE,0x0,0x2,0x4,0x9,0xD},
-//     {0x1,0xB,0x3,0x0,0x9,0x7,0xD,0x6,0x5,0xE,0x8,0x2,0xA,0x4,0xF,0xC},
-// };
-
 static const uint8_t ibtable[5][10][100] = {
     {
         {11, 38, 3,  63, 36, 39, 79, 19, 87, 68, 76, 51, 20, 56, 77, 61, 52, 73, 74, 94,
@@ -494,79 +479,6 @@ static void decrypt_spad_0(const uint8_t* spad, uint8_t* decrypted) {
     }
 }
 
-static void parse_classic_aime_access_code(const uint8_t* access_code, FuriString* parsed_data) {
-    switch(access_code[3]) {
-    case 1:
-        switch(access_code[4]) {
-        case 0:
-            furi_string_cat_str(parsed_data, "Initial D 5-8\n");
-            break;
-        default:
-            break;
-        }
-        break;
-    case 2:
-        switch(access_code[4]) {
-        case 3:
-            furi_string_cat_str(parsed_data, "Border Break\n");
-            break;
-        case 5:
-            furi_string_cat_str(parsed_data, "Shining Force Cross\n");
-            break;
-        case 9:
-            furi_string_cat_str(parsed_data, "MJ4 Evo Mobile\n");
-            break;
-        default:
-            break;
-        }
-        break;
-    case 3:
-        switch(access_code[4]) {
-        case 1:
-            furi_string_cat_str(parsed_data, "MJ4 Evo Card\n");
-            break;
-        case 2:
-            furi_string_cat_str(parsed_data, "Diva Card\n");
-            break;
-        case 3:
-            furi_string_cat_str(parsed_data, "Diva Mobile\n");
-            break;
-        case 4:
-            furi_string_cat_str(parsed_data, "MJ4 Evo Pro Mahjong Player\n");
-            break;
-        case 5:
-            furi_string_cat_str(parsed_data, "AiMe Mobile\n");
-            break;
-        case 6:
-            furi_string_cat_str(parsed_data, "AiMe Card\n");
-            break;
-        case 7:
-            furi_string_cat_str(parsed_data, "Crows Mobile\n");
-            break;
-        case 8:
-            furi_string_cat_str(parsed_data, "Crows Card\n");
-            break;
-        default:
-            break;
-        }
-        break;
-    case 4:
-        switch(access_code[4]) {
-        case 1:
-            furi_string_cat_str(parsed_data, "Sengoku Card\n");
-            break;
-        case 2:
-            furi_string_cat_str(parsed_data, "Rec Check Golf Card\n");
-            break;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-}
-
 static bool check_access_code_crc(
     const uint8_t* access_code,
     const uint8_t decrypted[6],
@@ -588,7 +500,7 @@ static bool check_access_code_crc(
     return (crc16 == expected_crc);
 }
 
-static void parse_aic_access_code(const uint8_t* access_code, FuriString* parsed_data) {
+static void parse_access_code(const uint8_t* access_code, FuriString* parsed_data) {
     furi_assert(access_code);
     furi_assert(parsed_data);
 
@@ -724,24 +636,11 @@ bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
         parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
 
     // Parse Access Code
-    if(access_code_is_bcd) {
-        furi_string_cat_str(parsed_data, "\nDecoded Card Type:\n");
-        switch(access_code[0]) {
-        case 0:
-            furi_string_cat_str(parsed_data, "Classic AiMe cards\n");
-            parse_classic_aime_access_code(access_code, parsed_data);
-            break;
-        case 3:
-            furi_string_cat_str(parsed_data, "Banapass cards\n");
-            break;
-        case 5:
-            furi_string_cat_str(parsed_data, "Amusement IC\n");
-            parse_aic_access_code(access_code, parsed_data);
-            break;
-        default:
-            furi_string_cat_str(parsed_data, "Unknown\n");
-            break;
-        }
+    if(access_code_is_bcd && access_code[0] == 5) {
+        furi_string_cat_str(parsed_data, "\n");
+        parse_access_code(access_code, parsed_data);
+    } else {
+        furi_string_cat_printf(parsed_data, "\nAccess code preamble wrong: expected 5, got %d\n", access_code[0]);
     }
 
     return parsed;
