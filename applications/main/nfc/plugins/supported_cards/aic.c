@@ -535,7 +535,7 @@ static void parse_access_code(const uint8_t* access_code, FuriString* parsed_dat
 
     furi_string_cat_printf(
         parsed_data,
-        "Decrypted serial number:\n%02X%02X%02X%02X%02X%02X\n",
+        "Decrypted serial number:\n%02d%02d%02d%02d%02d%02d\n",
         decrypted[0],
         decrypted[1],
         decrypted[2],
