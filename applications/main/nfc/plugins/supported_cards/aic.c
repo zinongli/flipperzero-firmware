@@ -178,7 +178,7 @@ static const uint8_t s_box[9][256] = {
      0xb8},
 };
 
-static const uint8_t ibtable[5][10][100] = {
+static const uint8_t access_code_table_1[5][10][100] = {
     {
         {11, 38, 3,  63, 36, 39, 79, 19, 87, 68, 76, 51, 20, 56, 77, 61, 52, 73, 74, 94,
          45, 31, 99, 28, 29, 90, 81, 96, 65, 75, 13, 32, 70, 21, 55, 33, 9,  15, 92, 14,
@@ -441,7 +441,7 @@ static const uint8_t ibtable[5][10][100] = {
     },
 };
 
-static const uint8_t ibtable2[10][10] = {
+static const uint8_t access_code_table_2[10][10] = {
     {4, 7, 8, 0, 9, 1, 3, 6, 2, 5},
     {5, 0, 4, 1, 3, 8, 9, 7, 6, 2},
     {0, 2, 7, 8, 9, 1, 6, 3, 5, 4},
@@ -480,7 +480,7 @@ static void decrypt_spad_0(const uint8_t* spad, uint8_t* decrypted) {
 }
 
 static bool check_access_code_crc(
-    const uint8_t* access_code,
+    const uint8_t access_code[20],
     const uint8_t decrypted[6],
     const uint8_t crc[5]) {
     uint8_t buffer[9];
@@ -517,7 +517,7 @@ static void parse_access_code(const uint8_t* access_code, FuriString* parsed_dat
         (crc[3] + crc[2]) % 10, crc[2], crc[3], crc[4], (crc[4] + crc[0]) % 10, crc[1]};
 
     for(int n = 0; n < 6; ++n) {
-        decrypted[n] = ibtable[4][boxes1[n]][decrypted[n]];
+        decrypted[n] = access_code_table_1[4][boxes1[n]][decrypted[n]];
     }
 
     int rv = decrypted[0] >> 4;
@@ -526,15 +526,16 @@ static void parse_access_code(const uint8_t* access_code, FuriString* parsed_dat
         (crc[1] + crc[0]) % 10, crc[1], crc[2], crc[3], crc[4], (crc[4] + crc[1]) % 10};
     for(int n = 0; n < 6; ++n) {
         if(n == 0) {
-            decrypted[n] = (decrypted[n] & 0xF0) | ibtable2[boxes2[n]][decrypted[n] & 0x0F];
+            decrypted[n] = (decrypted[n] & 0xF0) |
+                           access_code_table_2[boxes2[n]][decrypted[n] & 0x0F];
         } else {
-            decrypted[n] = ibtable[rv][boxes2[n]][decrypted[n]];
+            decrypted[n] = access_code_table_1[rv][boxes2[n]][decrypted[n]];
         }
     }
 
     furi_string_cat_printf(
         parsed_data,
-        "Decrypted serial#:\n%02X%02X%02X%02X%02X%02X\n",
+        "Decrypted serial number:\n%02X%02X%02X%02X%02X%02X\n",
         decrypted[0],
         decrypted[1],
         decrypted[2],
@@ -579,16 +580,16 @@ bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
     const uint8_t data_format_code_2 = data->data.fs.id.data[9];
     switch(data_format_code_2) {
     case 0x2A:
-        furi_string_cat_str(parsed_data, "Bandai Namco Passport (New)\n");
+        furi_string_cat_str(parsed_data, "Bandai Namco Passport\n");
         break;
     case 0x3A:
         furi_string_cat_str(parsed_data, "Bandai Namco Passport (Old)\n");
         break;
     case 0x68:
-        furi_string_cat_str(parsed_data, "Konami e-Amusement Pass\n");
+        furi_string_cat_str(parsed_data, "Konami e-amusement pass\n");
         break;
     case 0x78:
-        furi_string_cat_str(parsed_data, "SEGA Aime Card\n");
+        furi_string_cat_str(parsed_data, "SEGA Aime\n");
         break;
     case 0x79:
         furi_string_cat_str(parsed_data, "Taito NESiCA\n");
@@ -603,16 +604,6 @@ bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
     // decrypt_spad_0 S-PAD 0
     uint8_t decrypted[16] = {0};
     decrypt_spad_0(data->data.fs.spad[0].data, decrypted);
-    furi_string_cat_str(parsed_data, "\nDecrypted S-PAD 0:\n");
-    for(int i = 0; i < 16; i++) {
-        furi_string_cat_printf(parsed_data, "%02X ", decrypted[i]);
-        if(i == 7) {
-            furi_string_cat_str(parsed_data, "\n");
-        }
-    }
-    furi_string_cat_str(parsed_data, "\n");
-    furi_string_cat_str(
-        parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
 
     // Get Access Code
     uint8_t access_code[20] = {0};
@@ -642,6 +633,19 @@ bool aic_parse(const NfcDevice* device, FuriString* parsed_data) {
     } else {
         furi_string_cat_printf(parsed_data, "\nAccess code preamble wrong: expected 5, got %d\n", access_code[0]);
     }
+
+    furi_string_cat_str(
+        parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
+    furi_string_cat_str(parsed_data, "\nDecrypted S-PAD 0:\n");
+    for(int i = 0; i < 16; i++) {
+        furi_string_cat_printf(parsed_data, "%02X ", decrypted[i]);
+        if(i == 7) {
+            furi_string_cat_str(parsed_data, "\n");
+        }
+    }
+    furi_string_cat_str(parsed_data, "\n");
+    furi_string_cat_str(
+        parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
 
     return parsed;
 }
