@@ -479,25 +479,31 @@ static void decrypt_spad_0(const uint8_t* spad, uint8_t* decrypted) {
     }
 }
 
-static bool check_access_code_crc(
-    const uint8_t access_code[20],
-    const uint8_t decrypted[6],
-    const uint8_t crc[5]) {
-    uint8_t buffer[9];
-    buffer[0] = access_code[0];
-    buffer[1] = access_code[1];
-    buffer[2] = access_code[2];
-    for(int i = 0; i < 6; ++i)
-        buffer[3 + i] = decrypted[i];
 
-    uint16_t polynom = 0x8408;
-    uint16_t init = 0xffff;
+static uint16_t crc16(uint64_t data, int bits, uint16_t init, uint16_t poly) {
+    uint16_t v = init;
+    for(int i = 0; i < bits; ++i) {
+        v = (v >> 1) ^ (((v ^ data) & 1ULL) ? poly : 0);
+        data >>= 1;
+    }
+    return v;
+}
 
-    uint16_t crc16 = bit_lib_crc16(buffer, 9, polynom, init, false, false, 0);
-
+static bool check_access_code_crc(const uint8_t ac[3], const uint8_t body[6], const uint8_t crc[5]) {
+    uint64_t msg = 0;
+    for(int i = 0; i < 3; ++i) {
+        if(ac[i] > 0xF) return false;
+        msg = (msg << 4) | ac[i];
+    }
+    for(int i = 0; i < 6; ++i) {
+        uint8_t v = body[i];
+        if(v > 99) return false;
+        msg = (msg << 4) | (v / 10);
+        msg = (msg << 4) | (v % 10);
+    }
+    uint16_t calculated_crc = crc16(msg, 60, 0xFFFF, 0x8408);
     uint16_t expected_crc = crc[0] * 10000 + crc[1] * 1000 + crc[2] * 100 + crc[3] * 10 + crc[4];
-
-    return (crc16 == expected_crc);
+    return (calculated_crc == expected_crc);
 }
 
 static void parse_access_code(const uint8_t* access_code, FuriString* parsed_data) {
@@ -545,7 +551,7 @@ static void parse_access_code(const uint8_t* access_code, FuriString* parsed_dat
 
     furi_string_cat_printf(
         parsed_data,
-        "\nCRC check: %s\n",
+        "CRC check: %s\n",
         check_access_code_crc(access_code, decrypted, crc) ? "Passed" : "Invalid");
 }
 
