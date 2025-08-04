@@ -8,9 +8,133 @@
 
 #define TAG "Banapass"
 
-static const uint64_t banapass_key = 0x6090D00632F5;
 static const uint64_t banapass_key_b_value_block = 0x019761AA8082;
 static const uint64_t banapass_key_b_access_code = 0x574343467632;
+typedef struct {
+    uint64_t a;
+    uint64_t b;
+} MfClassicKeyPair;
+
+static MfClassicKeyPair banapass_keys_if_value_block[] = {
+    {.a = 0x6090D00632F5, .b = 0x019761AA8082},
+    {.a = 0xA99164400748, .b = 0x62742819AD7C},
+    {.a = 0xCC5075E42BA1, .b = 0xB9DF35A0814C},
+    {.a = 0x8AF9C718F23D, .b = 0x58CD5C3673CB},
+    {.a = 0xFC80E88EB88C, .b = 0x7A3CDAD7C023},
+    {.a = 0x30424C029001, .b = 0x024E4E44001F},
+    {.a = 0xECBBFA57C6AD, .b = 0x4757698143BD},
+    {.a = 0x1D30972E6485, .b = 0xF8526D1A8D6D},
+    {.a = 0x1300EC8C7E80, .b = 0xF80A65A87FFA},
+    {.a = 0xDEB06ED4AF8E, .b = 0x4AD96BF28190},
+    {.a = 0x000390014D41, .b = 0x0800F9917CB0},
+    {.a = 0x730050555253, .b = 0x4146D4A956C4},
+    {.a = 0x131157FBB126, .b = 0xE69DD9015A43},
+    {.a = 0x337237F254D5, .b = 0x9A8389F32FBF},
+    {.a = 0x7B8FB4A7100B, .b = 0xC8382A233993},
+    {.a = 0x7B304F2A12A6, .b = 0xFC9418BF788B},
+};
+
+static MfClassicKeyPair banapass_keys_if_access_code[] = {
+    {.a = 0x6090D00632F5, .b = 0x574343467632},
+    {.a = 0xA99164400748, .b = 0x62742819AD7C},
+    {.a = 0xCC5075E42BA1, .b = 0xB9DF35A0814C},
+    {.a = 0x8AF9C718F23D, .b = 0x58CD5C3673CB},
+    {.a = 0xFC80E88EB88C, .b = 0x7A3CDAD7C023},
+    {.a = 0x30424C029001, .b = 0x024E4E44001F},
+    {.a = 0xECBBFA57C6AD, .b = 0x4757698143BD},
+    {.a = 0x1D30972E6485, .b = 0xF8526D1A8D6D},
+    {.a = 0x1300EC8C7E80, .b = 0xF80A65A87FFA},
+    {.a = 0xDEB06ED4AF8E, .b = 0x4AD96BF28190},
+    {.a = 0x000390014D41, .b = 0x0800F9917CB0},
+    {.a = 0x730050555253, .b = 0x4146D4A956C4},
+    {.a = 0x131157FBB126, .b = 0xE69DD9015A43},
+    {.a = 0x337237F254D5, .b = 0x9A8389F32FBF},
+    {.a = 0x7B8FB4A7100B, .b = 0xC8382A233993},
+    {.a = 0x7B304F2A12A6, .b = 0xFC9418BF788B},
+};
+
+static bool banapass_verify(Nfc* nfc) {
+    bool verified = true;
+
+    const uint8_t verify_sector = 0;
+    uint8_t block_num = mf_classic_get_first_block_num_of_sector(verify_sector);
+    FURI_LOG_D(TAG, "Verifying sector %u", verify_sector);
+
+    MfClassicKey key_a_0 = {};
+    bit_lib_num_to_bytes_be(
+        banapass_keys_if_value_block[0].a, COUNT_OF(key_a_0.data), key_a_0.data);
+
+    MfClassicAuthContext auth_ctx = {};
+    MfClassicError error =
+        mf_classic_poller_sync_auth(nfc, block_num, &key_a_0, MfClassicKeyTypeA, &auth_ctx);
+
+    if(error != MfClassicErrorNone) {
+        FURI_LOG_D(TAG, "Failed to read block %u: %d", block_num, error);
+        verified = false;
+    }
+
+    return verified;
+}
+
+static bool banapass_read(Nfc* nfc, NfcDevice* device) {
+    furi_assert(nfc);
+    furi_assert(device);
+
+    bool is_read = false;
+
+    MfClassicData* data = mf_classic_alloc();
+    nfc_device_copy_data(device, NfcProtocolMfClassic, data);
+
+    do {
+        MfClassicType type = MfClassicType1k;
+        MfClassicError error = mf_classic_poller_sync_detect_type(nfc, &type);
+        if(error != MfClassicErrorNone) break;
+        if(type != MfClassicType1k) {
+            FURI_LOG_E(TAG, "Card not MIFARE Classic 1k");
+            break;
+        }
+
+        data->type = type;
+        MfClassicDeviceKeys keys = {};
+
+        // Access Code Read Attempt
+        for(size_t i = 0; i < mf_classic_get_total_sectors_num(data->type); i++) {
+            bit_lib_num_to_bytes_be(
+                banapass_keys_if_access_code[i].a, sizeof(MfClassicKey), keys.key_a[i].data);
+            FURI_BIT_SET(keys.key_a_mask, i);
+            bit_lib_num_to_bytes_be(
+                banapass_keys_if_access_code[i].b, sizeof(MfClassicKey), keys.key_b[i].data);
+            FURI_BIT_SET(keys.key_b_mask, i);
+        }
+
+        MfClassicError error_access_code = mf_classic_poller_sync_read(nfc, &keys, data);
+
+        // Value Block Read Attempt
+        for(size_t i = 0; i < mf_classic_get_total_sectors_num(data->type); i++) {
+            bit_lib_num_to_bytes_be(
+                banapass_keys_if_value_block[i].a, sizeof(MfClassicKey), keys.key_a[i].data);
+            FURI_BIT_SET(keys.key_a_mask, i);
+            bit_lib_num_to_bytes_be(
+                banapass_keys_if_value_block[i].b, sizeof(MfClassicKey), keys.key_b[i].data);
+            FURI_BIT_SET(keys.key_b_mask, i);
+        }
+
+        MfClassicError error_value_block = mf_classic_poller_sync_read(nfc, &keys, data);
+
+        if(error_access_code == MfClassicErrorNone || error_value_block == MfClassicErrorNone) {
+            nfc_device_set_data(device, NfcProtocolMfClassic, data);
+            is_read = true;
+        } else {
+            FURI_LOG_E(TAG, "Failed to read data. Bad keys?");
+            break;
+        }
+
+    } while(false);
+
+    mf_classic_free(data);
+
+    return is_read;
+}
 
 static bool banapass_parse(const NfcDevice* device, FuriString* parsed_data) {
     furi_assert(device);
@@ -24,7 +148,7 @@ static bool banapass_parse(const NfcDevice* device, FuriString* parsed_data) {
         MfClassicSectorTrailer* sec_tr = mf_classic_get_sector_trailer_by_sector(data, 0);
         uint64_t key_a = bit_lib_bytes_to_num_be(sec_tr->key_a.data, 6);
         uint64_t key_b = bit_lib_bytes_to_num_be(sec_tr->key_b.data, 6);
-        if(key_a != banapass_key) break;
+        if(key_a != banapass_keys_if_value_block[0].a) break;
 
         furi_string_set_str(parsed_data, "\e#Banapass\n");
         furi_string_cat_str(
@@ -79,7 +203,8 @@ static bool banapass_parse(const NfcDevice* device, FuriString* parsed_data) {
                 if(i % 2 == 1) {
                     furi_string_cat_str(parsed_data, " ");
                 }
-                if(access_code[i] > 9) access_code_is_bcd = false;
+                if((access_code[i] >> 4) > 9) access_code_is_bcd = false;
+                if((access_code[i] & 0x0F) > 9) access_code_is_bcd = false;
             }
             furi_string_cat_printf(
                 parsed_data, "\nBCD valid: %s\n", access_code_is_bcd ? "Yes" : "No");
@@ -113,8 +238,8 @@ static bool banapass_parse(const NfcDevice* device, FuriString* parsed_data) {
 /* Actual implementation of app<>plugin interface */
 static const NfcSupportedCardsPlugin banapass_plugin = {
     .protocol = NfcProtocolMfClassic,
-    .verify = NULL,
-    .read = NULL,
+    .verify = banapass_verify,
+    .read = banapass_read,
     .parse = banapass_parse,
 };
 
