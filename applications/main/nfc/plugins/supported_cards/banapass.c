@@ -109,6 +109,12 @@ static bool banapass_read(Nfc* nfc, NfcDevice* device) {
 
         MfClassicError error_access_code = mf_classic_poller_sync_read(nfc, &keys, data);
 
+        if(error_access_code == MfClassicErrorNone) {
+            nfc_device_set_data(device, NfcProtocolMfClassic, data);
+            is_read = true;
+            break;
+        }
+
         // Value Block Read Attempt
         for(size_t i = 0; i < mf_classic_get_total_sectors_num(data->type); i++) {
             bit_lib_num_to_bytes_be(
@@ -121,14 +127,12 @@ static bool banapass_read(Nfc* nfc, NfcDevice* device) {
 
         MfClassicError error_value_block = mf_classic_poller_sync_read(nfc, &keys, data);
 
-        if(error_access_code == MfClassicErrorNone || error_value_block == MfClassicErrorNone) {
+        if(error_value_block == MfClassicErrorNone) {
             nfc_device_set_data(device, NfcProtocolMfClassic, data);
             is_read = true;
-        } else {
-            FURI_LOG_E(TAG, "Failed to read data. Bad keys?");
             break;
         }
-
+        FURI_LOG_E(TAG, "Failed to read data. Bad keys?");
     } while(false);
 
     mf_classic_free(data);
@@ -174,47 +178,70 @@ static bool banapass_parse(const NfcDevice* device, FuriString* parsed_data) {
 
         furi_string_cat_str(
             parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
-        switch(key_b) {
-        case banapass_key_b_value_block:
-            int32_t value = 0;
-            uint8_t addr = 0;
-            bool value_found = mf_classic_block_to_value(
-                &data->block[2], &value, &addr); // block 2 is value block
-            if(value_found) {
-                furi_string_cat_printf(parsed_data, "\nValue: %ld", value);
+
+        bool is_block_2_null = true;
+        for(int i = 0; i < 16; i++) {
+            if(data->block[2].data[i] != 0) {
+                is_block_2_null = false;
+                break;
             }
+        }
+        if(is_block_2_null) {
             furi_string_cat_str(
                 parsed_data,
-                "\nPlease check the back of\nyour Bandai Namco Passport\nfor the Access Code\n");
+                "\nPlease scan the clone at the\nnearest CHUNITHM or\nmaimai Cabinet for the\nAccess Code.\n");
             furi_string_cat_str(
                 parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
-            break;
-
-        case banapass_key_b_access_code:
-            // banapass access code is stored as decimal hex representation in block 2, starts from byte 6, len 10 bytes
-            uint8_t access_code[10];
-
-            furi_string_cat_printf(parsed_data, "\nAccess Code:\n");
-            bool access_code_is_bcd = true;
-
-            for(int i = 0; i < 10; i++) {
-                access_code[i] = data->block[2].data[6 + i];
-                furi_string_cat_printf(parsed_data, "%02X", access_code[i]);
-                if(i % 2 == 1) {
-                    furi_string_cat_str(parsed_data, " ");
+        } else {
+            switch(key_b) {
+            case banapass_key_b_value_block:
+                int32_t value = 0;
+                uint8_t addr = 0;
+                bool value_found = mf_classic_block_to_value(
+                    &data->block[2], &value, &addr); // block 2 is value block
+                if(value_found) {
+                    furi_string_cat_printf(parsed_data, "\nValue: %08lX", value);
+                } else {
+                    furi_string_cat_str(parsed_data, "\nPotential clone:\nInvalid value block.");
                 }
-                if((access_code[i] >> 4) > 9) access_code_is_bcd = false;
-                if((access_code[i] & 0x0F) > 9) access_code_is_bcd = false;
-            }
-            furi_string_cat_printf(
-                parsed_data, "\nBCD valid: %s\n", access_code_is_bcd ? "Yes" : "No");
-            furi_string_cat_str(
-                parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
-            break;
-        default:
-            break;
-        }
+                furi_string_cat_str(
+                    parsed_data,
+                    "\nPlease check the back of\nyour Bandai Namco Passport\nfor the Access Code.\n");
+                furi_string_cat_str(
+                    parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
+                break;
 
+            case banapass_key_b_access_code:
+                // banapass access code is stored as decimal hex representation in block 2, starts from byte 6, len 10 bytes
+                uint8_t access_code[10];
+
+                furi_string_cat_printf(parsed_data, "\nAccess Code:\n");
+                bool access_code_is_bcd = true;
+
+                for(int i = 0; i < 10; i++) {
+                    access_code[i] = data->block[2].data[6 + i];
+                    furi_string_cat_printf(parsed_data, "%02X", access_code[i]);
+                    if(i % 2 == 1) {
+                        furi_string_cat_str(parsed_data, " ");
+                    }
+                    if((access_code[i] >> 4) > 9) access_code_is_bcd = false;
+                    if((access_code[i] & 0x0F) > 9) access_code_is_bcd = false;
+                }
+                furi_string_cat_printf(
+                    parsed_data, "\nBCD valid: %s\n", access_code_is_bcd ? "Yes" : "No");
+                if((access_code[0] >> 4) != 3) {
+                    furi_string_cat_printf(
+                        parsed_data,
+                        "Potential clone:\nAccess Code preamble\nexpected 3, got %d\n", (access_code[0] >> 4));
+                }
+                furi_string_cat_str(
+                    parsed_data, "::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::");
+
+                break;
+            default:
+                break;
+            }
+        }
         furi_string_cat_str(parsed_data, "\nMagic:\n");
         for(int i = 0; i < 6; i++) {
             furi_string_cat_printf(parsed_data, "%c", magic_bytes[i]);
