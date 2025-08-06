@@ -272,6 +272,5 @@ App(
     entry_point="aic_plugin_ep",
     targets=["f7"],
     requires=["nfc"],
-    fap_libs=["mbedtls"],
     sources=["plugins/supported_cards/aic.c"],
 )
