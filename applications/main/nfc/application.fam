@@ -265,3 +265,13 @@ App(
     requires=["cli"],
     sources=["nfc_cli.c"],
 )
+
+App(
+    appid="konami_parser",
+    apptype=FlipperAppType.PLUGIN,
+    entry_point="konami_plugin_ep",
+    targets=["f7"],
+    requires=["nfc"],
+    fap_libs=["mbedtls"],
+    sources=["plugins/supported_cards/konami.c"],
+)
