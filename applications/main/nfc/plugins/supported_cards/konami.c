@@ -94,11 +94,11 @@ static bool konami_parse(const NfcDevice* device, FuriString* parsed_data) {
             case 3:
             case 7:
             case 11:
-                furi_string_cat_printf(parsed_data, "-");
+                furi_string_cat_printf(parsed_data, " ");
                 break;
             }
         }
-        
+
         parsed = true;
     } while(false);
 
