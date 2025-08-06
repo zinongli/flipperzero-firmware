@@ -85,7 +85,7 @@ static bool konami_parse(const NfcDevice* device, FuriString* parsed_data) {
         unpacked[14] = card_type;
         unpacked[15] = checksum(unpacked);
 
-        furi_string_cat_str(parsed_data, "\e#e-Amusement\n");
+        furi_string_cat_str(parsed_data, "\e#e-amusement pass\n");
         furi_string_cat_str(parsed_data, "KONAMI ID:\n");
 
         for(size_t i = 0; i < 16; i++) {
