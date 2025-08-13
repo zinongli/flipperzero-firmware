@@ -239,7 +239,7 @@ static void felica_poller_prepare_tx_buffer_raw(
 FelicaError felica_poller_list_service_by_cursor(
     FelicaPoller* instance,
     uint16_t cursor,
-    FelicaListServiceCommandResponse** response_ptr) {
+    FelicaListServiceCommandResponse** const response_ptr) {
     furi_assert(instance);
     furi_assert(response_ptr);
 
