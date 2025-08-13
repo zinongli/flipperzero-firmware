@@ -80,19 +80,18 @@ NfcCommand felica_poller_state_handler_activate(FelicaPoller* instance) {
     FelicaError error = felica_poller_activate(instance, instance->data);
     if(error == FelicaErrorNone) {
         furi_hal_random_fill_buf(instance->data->data.fs.rc.data, FELICA_DATA_BLOCK_SIZE);
-        felica_get_ic_type(instance->data);
+        felica_get_workflow_type(instance->data);
 
         instance->felica_event.type = FelicaPollerEventTypeRequestAuthContext;
         instance->felica_event_data.auth_context = &instance->auth.context;
 
         instance->callback(instance->general_event, instance->context);
 
-        switch(instance->data->ic_type) {
+        switch(instance->data->workflow_type) {
         case FelicaStandard:
             instance->state = FelicaPollerStateTraverseStandardSystem;
             break;
         case FelicaLite:
-        case FelicaLiteS:
             instance->state = FelicaPollerStateReadLiteBlocks;
             break;
         default:
@@ -122,12 +121,11 @@ NfcCommand felica_poller_state_handler_auth_internal(FelicaPoller* instance) {
         instance->data->data.fs.rc.data,
         instance->auth.session_key.data);
 
-    switch(instance->data->ic_type) {
+    switch(instance->data->workflow_type) {
     case FelicaStandard:
         instance->state = FelicaPollerStateTraverseStandardSystem;
         break;
     case FelicaLite:
-    case FelicaLiteS:
         instance->state = FelicaPollerStateReadLiteBlocks;
         break;
     default:
@@ -212,12 +210,11 @@ NfcCommand felica_poller_state_handler_auth_external(FelicaPoller* instance) {
         instance->auth.context.auth_status.external = instance->data->data.fs.state.data[0];
     } while(false);
 
-    switch(instance->data->ic_type) {
+    switch(instance->data->workflow_type) {
     case FelicaStandard:
         instance->state = FelicaPollerStateTraverseStandardSystem;
         break;
     case FelicaLite:
-    case FelicaLiteS:
         instance->state = FelicaPollerStateReadLiteBlocks;
         break;
     default:

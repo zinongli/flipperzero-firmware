@@ -1061,8 +1061,8 @@ Function,+,felica_free,void,FelicaData*
 Function,+,felica_get_base_data,FelicaData*,const FelicaData*
 Function,+,felica_get_device_name,const char*,"const FelicaData*, NfcDeviceNameType"
 Function,+,felica_get_ic_name,void,"const FelicaData*, FuriString*"
-Function,+,felica_get_ic_type,void,FelicaData*
 Function,+,felica_get_uid,const uint8_t*,"const FelicaData*, size_t*"
+Function,+,felica_get_workflow_type,void,FelicaData*
 Function,+,felica_is_equal,_Bool,"const FelicaData*, const FelicaData*"
 Function,+,felica_load,_Bool,"FelicaData*, FlipperFormat*, uint32_t"
 Function,+,felica_poller_activate,FelicaError,"FelicaPoller*, FelicaData*"

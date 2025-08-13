@@ -4,14 +4,14 @@ void nfc_render_felica_blocks_count(
     const FelicaData* data,
     FuriString* str,
     bool render_auth_notification) {
-    if(data->ic_type == FelicaLite || data->ic_type == FelicaLiteS) {
+    if(data->workflow_type == FelicaLite) {
         furi_string_cat_printf(str, "Blocks: %u\n", data->blocks_total);
 
         furi_string_cat_printf(str, "\nBlocks Read: %u/%u", data->blocks_read, data->blocks_total);
         if(render_auth_notification && data->blocks_read != data->blocks_total) {
             furi_string_cat_printf(str, "\nAuth-protected blocks!");
         }
-    } else if(data->ic_type == FelicaStandard) {
+    } else if(data->workflow_type == FelicaStandard) {
         furi_string_cat_printf(
             str, "Public blocks Read: %lu", simple_array_get_count(data->public_blocks));
     }
@@ -161,7 +161,7 @@ void nfc_more_info_render_felica_blocks(
     FuriString* str,
     const uint16_t service_code_key) {
     furi_string_cat_printf(str, "\n");
-    if(data->ic_type == FelicaLite || data->ic_type == FelicaLiteS) {
+    if(data->workflow_type == FelicaLite) {
         furi_string_cat_printf(str, "Blocks: %u\n", data->blocks_total);
         FuriString* name = furi_string_alloc();
 
@@ -192,7 +192,7 @@ void nfc_more_info_render_felica_blocks(
         nfc_render_felica_block(&data->data.fs.state, str, "STATE", 20, 21);
         nfc_render_felica_block(&data->data.fs.crc_check, str, "CRC_CHCK", 15, 17);
 
-    } else if(data->ic_type == FelicaStandard) {
+    } else if(data->workflow_type == FelicaStandard) {
         uint32_t public_blocks_count = simple_array_get_count(data->public_blocks);
         for(size_t i = 0; i < public_blocks_count; i++) {
             FelicaPublicBlock* public_block = simple_array_get(data->public_blocks, i);

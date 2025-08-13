@@ -83,7 +83,7 @@ void felica_reset(FelicaData* data) {
 
     data->blocks_read = 0;
     data->blocks_total = 0;
-    data->ic_type = FelicaUnknown;
+    data->workflow_type = FelicaUnknown;
     memset(&data->idm, 0, sizeof(data->idm));
     memset(&data->pmm, 0, sizeof(data->pmm));
     memset(&data->data, 0, sizeof(data->data));
@@ -100,7 +100,7 @@ void felica_copy(FelicaData* data, const FelicaData* other) {
     data->blocks_total = other->blocks_total;
     data->blocks_read = other->blocks_read;
     data->data = other->data;
-    data->ic_type = other->ic_type;
+    data->workflow_type = other->workflow_type;
 
     simple_array_copy(data->services, other->services);
     simple_array_copy(data->areas, other->areas);
@@ -138,9 +138,9 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
                ff, FELICA_MANUFACTURE_PARAMETER, data->pmm.data, FELICA_PMM_SIZE))
             break;
 
-        felica_get_ic_type(data);
+        felica_get_workflow_type(data);
         if(data_format_version == 1) {
-            data->ic_type = FelicaLite;
+            data->workflow_type = FelicaLite;
         }
         parsed = true;
     } while(false);
@@ -151,9 +151,8 @@ bool felica_load(FelicaData* data, FlipperFormat* ff, uint32_t version) {
         return false;
     }
 
-    switch(data->ic_type) {
+    switch(data->workflow_type) {
     case FelicaLite:
-    case FelicaLiteS:
         // Blocks data
         do {
             uint32_t blocks_total = 0;
@@ -306,9 +305,8 @@ bool felica_save(const FelicaData* data, FlipperFormat* ff) {
         if(!flipper_format_write_empty_line(ff)) break;
     } while(false);
 
-    switch(data->ic_type) {
+    switch(data->workflow_type) {
     case FelicaLite:
-    case FelicaLiteS:
         if(!flipper_format_write_comment_cstr(ff, "Felica Lite specific data")) break;
         // Blocks count
         do {
@@ -681,39 +679,37 @@ void felica_write_directory_tree(const FelicaData* data, FuriString* str) {
     }
 }
 
-void felica_get_ic_type(FelicaData* data) {
+void felica_get_workflow_type(FelicaData* data) {
     // Reference: Proxmark3 repo
     uint8_t rom_type = data->pmm.data[0];
-    uint8_t ic_type = data->pmm.data[1];
-    if(ic_type <= 0x48) {
+    uint8_t workflow_type = data->pmm.data[1];
+    if(workflow_type <= 0x48) {
         // More liberal check because most of these should be treated as FeliCa Standard, regardless of mobile or not.
-        data->ic_type = FelicaStandard;
+        data->workflow_type = FelicaStandard;
     } else {
-        switch(ic_type) {
+        switch(workflow_type) {
         case 0xA2:
-            data->ic_type = FelicaStandard;
+            data->workflow_type = FelicaStandard;
             break;
         case 0xF0:
-            data->ic_type = FelicaLite;
-            break;
         case 0xF1:
         case 0xF2: // 0xF2 => FeliCa Link RC-S967 in Lite-S Mode or Lite-S HT Mode
-            data->ic_type = FelicaLiteS;
+            data->workflow_type = FelicaLite;
             break;
 
         case 0xE1:
-            data->ic_type = FelicaLink;
+            data->workflow_type = FelicaUnknown; // Felica Link
             break;
         case 0xFF:
             if(rom_type == 0xFF) {
-                data->ic_type = FelicaLink;
+                data->workflow_type = FelicaUnknown; // Felica Link
             }
             break;
         case 0xE0:
-            data->ic_type = FelicaPlug;
+            data->workflow_type = FelicaUnknown; // Felica Plug
             break;
         default:
-            data->ic_type = FelicaUnknown;
+            data->workflow_type = FelicaUnknown;
             break;
         }
     }

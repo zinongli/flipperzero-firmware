@@ -30,7 +30,7 @@ void nfc_scene_felica_more_info_on_enter(void* context) {
 
     FuriString* label = furi_string_alloc();
 
-    switch(data->ic_type) {
+    switch(data->workflow_type) {
     case FelicaLite:
         furi_string_printf(label, "All blocks");
         submenu_add_item(
@@ -99,7 +99,7 @@ bool nfc_scene_felica_more_info_on_event(void* context, SceneManagerEvent event)
             const uint16_t service_ind = event.event - 1; // offset the three enums above
             FuriString* temp_str = furi_string_alloc();
 
-            switch(data->ic_type) {
+            switch(data->workflow_type) {
             case FelicaLite:
                 nfc_more_info_render_felica_lite_dump(data, temp_str);
                 break;
@@ -109,10 +109,9 @@ bool nfc_scene_felica_more_info_on_event(void* context, SceneManagerEvent event)
                 nfc_more_info_render_felica_blocks(data, temp_str, service->code);
                 break;
             default:
-                furi_string_printf(
+                furi_string_set_str(
                     temp_str,
-                    "IC type %d for Felica protocol\nNot implemented yet.",
-                    data->ic_type);
+                    "IC type not implemented yet");
                 break;
             }
             widget_add_text_scroll_element(

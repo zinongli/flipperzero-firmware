@@ -77,11 +77,7 @@ typedef enum {
     FelicaUnknown,
     FelicaStandard,
     FelicaLite,
-    FelicaLiteS,
-    FelicaLink,
-    FelicaMobile,
-    FelicaPlug,
-} FelicaICType;
+} FelicaWorkflowType;
 
 typedef struct {
     uint8_t data[FELICA_DATA_BLOCK_SIZE];
@@ -196,7 +192,7 @@ typedef struct {
     SimpleArray* services;
     SimpleArray* areas;
     SimpleArray* public_blocks;
-    FelicaICType ic_type;
+    FelicaWorkflowType workflow_type;
 } FelicaData;
 
 #pragma pack(push, 1)
@@ -316,7 +312,7 @@ void felica_calculate_mac_write(
 
 void felica_write_directory_tree(const FelicaData* data, FuriString* str);
 
-void felica_get_ic_type(FelicaData* data);
+void felica_get_workflow_type(FelicaData* data);
 
 void felica_get_ic_name(const FelicaData* data, FuriString* ic_name);
 
